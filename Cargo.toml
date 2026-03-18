@@ -1,0 +1,12 @@
+[package]
+name = "motion-k"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["skia-safe/gl"]
+
+[dependencies]
+skia-safe = "0.93.1"
+pixels = "0.15.0"
+vector2d = "3.1.1"
