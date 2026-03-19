@@ -17,10 +17,10 @@ fn main() {
     //let line = elements::line::Line::new().boxed();
 
     let mut l2_vec : Vec<Box<dyn Attribute<Vector2D<f32>>>> = Vec::new();
-    l2_vec.push(Vector2D::new(10_f32,10_f32).into_bsa());
-    l2_vec.push(Vector2D::new(1000_f32,900_f32).into_bsa());
-    l2_vec.push(Vector2D::new(300_f32,300_f32).into_bsa());
-    l2_vec.push(Vector2D::new(80_f32,700_f32).into_bsa());
+    l2_vec.push(Vector2D::new(10.,10.).into_bsa());
+    l2_vec.push(Vector2D::new(1000.,900.).into_bsa());
+    l2_vec.push(Vector2D::new(300.,300.).into_bsa());
+    l2_vec.push(Vector2D::new(80.,700.).into_bsa());
 
     let line2 = elements::line::Line
     {
@@ -35,6 +35,5 @@ fn main() {
     sequence.push(line2.boxed());
 
     let bytes = sequence.render_frame(100);
-    println!("{:?}", bytes);
 
 }
