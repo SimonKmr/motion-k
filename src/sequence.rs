@@ -9,7 +9,7 @@ pub struct Sequence{
     end_frame: u32,
     resolution: Vector2D<i32>,
     info: skia_safe::ImageInfo,
-    elements: LinkedList<Box<dyn elements::Element>>,
+    elements: Vec<Box<dyn elements::Element>>,
 }
 
 impl Sequence {
@@ -19,7 +19,7 @@ impl Sequence {
             end_frame: 0,
             resolution: Vector2D::new(width, height),
             info: skia_safe::ImageInfo::new_a8(skia_safe::ISize::new(width, height)),
-            elements: LinkedList::new()
+            elements: Vec::new()
         }
     }
 
