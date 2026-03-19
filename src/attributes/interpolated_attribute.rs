@@ -29,13 +29,13 @@ impl<T:InterpolationArithmetics> Attribute<T> for InterpolatedAttribute<T> {
         //one value -> value
         if k.len() == 1 { return k[0].value; }
 
-        let mut i  = (k.len() - 1);
+        let mut i  = k.len() - 1;
         while k[i].frame > frame && i > 0 { i -= 1; }
 
         //
         if k.len() - 1 == i { return k[k.len() -1 ].value; }
 
-        if (i != self.info.index.get()){
+        if i != self.info.index.get(){
             self.info.index.set(i);
             self.info.diff.set(k[i+1].frame - k[i].frame);
             self.info.diff_percentage.set(1. / (self.info.diff.get() as f32))

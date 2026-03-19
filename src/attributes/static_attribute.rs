@@ -13,7 +13,7 @@ impl<T:Copy> StaticAttribute<T>{
 }
 
 impl<T:Copy> Attribute<T> for StaticAttribute<T> {
-    fn get_frame(&self, frame: u32) -> T {
+    fn get_frame(&self, _frame: u32) -> T {
         self.value
     }
 }

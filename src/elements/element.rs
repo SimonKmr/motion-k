@@ -1,3 +1,11 @@
+use crate::attributes::static_attribute::StaticAttribute;
+
 pub trait Element {
     fn draw_on(&self, frame:u32, canvas: &skia_safe::canvas::Canvas) -> Result<(),&'static str>;
+    fn boxed(self) -> Box<dyn Element>
+    where Self: Sized + 'static,{
+        Box::new(self)
+    }
+
+
 }
