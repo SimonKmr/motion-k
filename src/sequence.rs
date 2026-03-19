@@ -30,8 +30,11 @@ impl Sequence {
 
         canvas.clear(Color::WHITE);
 
-        for x in &self.elements{
-            x.draw_on(frame, &mut canvas);
+        for e in &self.elements{
+            match e.draw_on(frame, &mut canvas) {
+                Ok(_) => {},
+                Err(e) => {println!("{}",e)}
+            }
         }
 
         let image =surface.image_snapshot();
