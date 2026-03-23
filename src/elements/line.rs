@@ -20,7 +20,7 @@ impl Line{
 }
 
 impl Element for Line {
-    fn draw_on(&self, frame: u32, canvas: &Canvas) -> Result<(),&'static str>
+    fn draw_on(&self, frame: usize, canvas: &Canvas) -> Result<(),&'static str>
     {
         if self.points.len() < 2 { return Err("Line must have at least two points"); }
 

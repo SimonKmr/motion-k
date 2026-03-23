@@ -9,19 +9,19 @@ pub struct InterpolatedAttribute<T: InterpolationArithmetics>{
 
 pub struct Keyframe<T : InterpolationArithmetics>{
     value: T,
-    frame: u32,
+    frame: usize,
     transition: dyn Fn(f32) -> f32,
 }
 
 struct CurrentFrameInfo{
     index : Cell<usize> ,
-    diff : Cell<u32>,
+    diff : Cell<usize>,
     diff_percentage: Cell<f32>,
 }
 
 
 impl<T:InterpolationArithmetics> Attribute<T> for InterpolatedAttribute<T> {
-    fn get_frame(&self, frame: u32) -> T {
+    fn get_frame(&self, frame: usize) -> T {
         let k = &self.keyframes;
 
         //no values -> error
