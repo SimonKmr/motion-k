@@ -7,6 +7,8 @@ edition = "2024"
 skia-safe = "0.93.1"
 pixels = "0.15.0"
 vector2d = "3.1.1"
+winit = "0.30"
+winit_input_helper = "0.17"
 
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]
