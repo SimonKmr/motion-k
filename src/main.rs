@@ -1,3 +1,4 @@
+use std::thread;
 use crate::attributes::attribute::Attribute;
 use crate::attributes::interpolated_attribute::InterpolatedAttribute;
 use crate::attributes::type_extensions::InterpolationArithmetics;
@@ -21,20 +22,19 @@ fn main() {
     let mut sequence = sequence::Sequence::new(width as usize,height as usize);
     //let line = elements::line::Line::new().boxed();
 
-    let mut l2_vec : Vec<Box<dyn Attribute<Vector2D<f32>>>> = Vec::new();
-    l2_vec.push(Vector2D::new(10.,10.).into_bsa());
-    l2_vec.push(Vector2D::new(1000.,900.).into_bsa());
-    l2_vec.push(Vector2D::new(300.,300.).into_bsa());
-    l2_vec.push(Vector2D::new(80.,700.).into_bsa());
-
+    let mut l_vec: Vec<Box<dyn Attribute<Vector2D<f32>>>> = Vec::new();
+    l_vec.push(Vector2D::new(10., 10.).into_bsa());
+    l_vec.push(Vector2D::new(1000., 700.).into_bsa());
+    l_vec.push(Vector2D::new(300., 300.).into_bsa());
+    l_vec.push(Vector2D::new(80., 700.).into_bsa());
 
     let mut end = InterpolatedAttribute::new();
     end.add(0.0,0_usize);
     end.add(1.0,600_usize);
 
-    let line2 = elements::line::Line
+    let line = elements::line::Line
     {
-        points: l2_vec,
+        points: l_vec,
         start: 0.0_f32.into_bsa(),
         end: end.boxed(),
         width: 50_f32.into_bsa(),
@@ -42,14 +42,39 @@ fn main() {
         is_antialias: true,
         stroke_caps: skia_safe::paint::Cap::Round
     };
-    sequence.push(line2.boxed());
 
-    let current_frame = 0;
+    let mut s_vec: Vec<Box<dyn Attribute<Vector2D<f32>>>> = Vec::new();
+    s_vec.push(Vector2D::new(300., 300.).into_bsa());
+    s_vec.push(Vector2D::new(700., 700.).into_bsa());
+    s_vec.push(Vector2D::new(900., 600.).into_bsa());
+    s_vec.push(Vector2D::new(80., 200.).into_bsa());
 
-    let window = Window::new(1280,720);
+    let shape = elements::shape::Shape{
+        points: s_vec,
+        color: RGB{ r: 200, g: 200, b:50 }.into_bsa(),
+        is_antialias: true,
+    };
+
+    sequence.push(shape.boxed());
+    sequence.push(line.boxed());
+
+
+    let mut current_frame = 0;
+
+    let mut window = Window::new(1280, 720);
+
+    window.redraw_event.push(Box::new(move |buffer|{
+        let bytes = sequence.render_frame(current_frame);
+        for i in 0..bytes.len(){
+            buffer[i] = bytes[i];
+        }
+
+        current_frame += 1;
+    }));
+
     window.run();
 
-    let bytes = sequence.render_frame(current_frame);
+    //let bytes = sequence.render_frame(current_frame);
     //let frame = pixels.frame_mut();
     //for i in 0..bytes.len(){
     //    frame[i] = bytes[i];
