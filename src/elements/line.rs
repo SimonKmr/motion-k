@@ -29,7 +29,7 @@ impl Element for Line {
         let start = self.start.get_frame(frame);
         let end = self.end.get_frame(frame);
 
-        if start >= end { return Err("Start is greater than End"); }
+        if start > end { return Err("Start is greater than End"); }
 
         let mut paint: skia_safe::Paint = skia_safe::Paint::default();
         paint.set_anti_alias(self.is_antialias);
