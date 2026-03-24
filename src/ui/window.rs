@@ -11,7 +11,8 @@ pub(crate) struct Window<'a>{
     pub(crate) buffer: Vec<u8>,
     window: Arc<winit::window::Window>,
     frame: Pixels<'a>,
-    event_loop: EventLoop<()>
+    event_loop: EventLoop<()>,
+    pub(crate) redraw_event: Vec<Box<dyn FnMut(&mut [u8])>>
 }
 
 impl Window<'_> {
@@ -35,18 +36,23 @@ impl Window<'_> {
             buffer: vec![0; (width * height * 4) as usize],
             frame: pixels,
             window: t_window,
-            event_loop
+            event_loop,
+            redraw_event: Vec::new(),
         }
     }
 
-    pub fn run(self){
+    pub fn run(mut self){
         self.event_loop.run(move |event, elwt| {
             match event {
                 // redraws when the OS asks
                 Event::WindowEvent {
                     event: WindowEvent::RedrawRequested, ..
                 } => {
+                    for f in self.redraw_event.iter_mut(){
+                        f(self.frame.frame_mut())
+                    }
 
+                    self.frame.render().unwrap();
                 }
 
                 // redraws every loop iteration (game loop style)
