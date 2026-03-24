@@ -1,5 +1,5 @@
 use std::cell::{Cell, RefCell};
-use crate::elements;
+use crate::motion_graphics::elements;
 use skia_safe::{surfaces, Color, ISize};
 use vector2d::Vector2D;
 

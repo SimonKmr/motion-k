@@ -1,4 +1,4 @@
-use crate::attributes::attribute::Attribute;
+use crate::motion_graphics::attributes::attribute::Attribute;
 
 pub struct StaticAttribute<T:Copy>{
     value: T,

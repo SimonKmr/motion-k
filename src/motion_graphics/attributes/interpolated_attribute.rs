@@ -1,5 +1,5 @@
-use crate::attributes::attribute::Attribute;
-use crate::attributes::type_extensions::InterpolationArithmetics;
+use crate::motion_graphics::attributes::attribute::Attribute;
+use crate::motion_graphics::attributes::type_extensions::InterpolationArithmetics;
 
 pub struct InterpolatedAttribute<T: InterpolationArithmetics>{
     keyframes: Vec<Box<Keyframe<T>>>,

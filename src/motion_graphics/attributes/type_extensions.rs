@@ -1,6 +1,6 @@
 use skia_safe::RGB;
 use vector2d::Vector2D;
-use crate::attributes::static_attribute::StaticAttribute;
+use crate::motion_graphics::attributes::static_attribute::StaticAttribute;
 
 pub(crate) trait InterpolationArithmetics: Copy {
     fn subtract(self, other: &Self) -> Self;

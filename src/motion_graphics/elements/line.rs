@@ -1,9 +1,10 @@
 use skia_safe::{Canvas, Point, RGB};
 use vector2d::Vector2D;
-use crate::elements::Element;
-use crate::attributes::attribute::Attribute;
+use crate::motion_graphics::elements::Element;
+use crate::motion_graphics::attributes::attribute::Attribute;
 
 pub struct Line{
+    pub position_offset: Box<dyn Attribute<Vector2D<f32>>>,
     pub points: Vec<Box<dyn Attribute<Vector2D<f32>>>>,
     pub start: Box<dyn Attribute<f32>>,
     pub end: Box<dyn Attribute<f32>>,

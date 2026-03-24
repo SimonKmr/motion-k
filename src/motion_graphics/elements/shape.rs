@@ -1,9 +1,10 @@
 use skia_safe::{Canvas, Path, PathFillType, Point, RGB};
 use vector2d::Vector2D;
-use crate::attributes::attribute::Attribute;
-use crate::elements::Element;
+use crate::motion_graphics::attributes::attribute::Attribute;
+use crate::motion_graphics::elements::Element;
 
 pub struct Shape {
+    pub position_offset: Box<dyn Attribute<Vector2D<f32>>>,
     pub points: Vec<Box<dyn Attribute<Vector2D<f32>>>>,
     pub color: Box< dyn Attribute<RGB>>,
     pub is_antialias: bool,
@@ -14,11 +15,14 @@ impl Element for Shape{
 
         if self.points.len() < 3 { return Err("Shape must have at least three points"); }
 
+        let position_offset = self.position_offset.get_frame(frame);
         //vec2d -> sk_point
         let mut sk_points : Vec<Point> = Vec::new();
         for vec2d in &self.points{
             let vec2d = vec2d.get_frame(frame);
-            let sk_point = Point::new(vec2d.x, vec2d.y);
+            let x = vec2d.x + position_offset.x;
+            let y = vec2d.y + position_offset.y;
+            let sk_point = Point::new(x, y);
             sk_points.push(sk_point);
         }
         let sk_shape = Path::polygon(&sk_points,true,PathFillType::default(),false);
