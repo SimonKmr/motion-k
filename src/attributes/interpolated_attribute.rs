@@ -1,4 +1,3 @@
-use std::cell::Cell;
 use crate::attributes::attribute::Attribute;
 use crate::attributes::type_extensions::InterpolationArithmetics;
 
@@ -34,6 +33,37 @@ impl<T: InterpolationArithmetics> InterpolatedAttribute<T>{
     }
 }
 
+impl<T : InterpolationArithmetics> Keyframe<T>{
+    pub fn new(value: T, frame: usize) -> Self{
+        Keyframe{
+            value,
+            frame,
+            transition: Box::new(|x| x)
+        }
+    }
+
+    ///
+    /// Creates a new keyframe with a transition
+    ///
+    /// This function allows you to create a Keyframe and specify every field,
+    /// including a function to map the linear progression of the keyframe onto a non-linear progression.
+    ///
+    /// ```rust
+    /// let x = Keyframe::new(0.1,42_usize);
+    /// ```
+    ///
+    pub fn new_t(value: T, frame: usize, transition: Box<dyn Fn(f32) -> f32>) -> Self{
+        Keyframe{
+            value,
+            frame,
+            transition
+        }
+    }
+
+    pub fn boxed(self) -> Box<Self>{
+        Box::new(self)
+    }
+}
 
 impl<T:InterpolationArithmetics> Attribute<T> for InterpolatedAttribute<T> {
     fn get_frame(&self, frame: usize) -> T {
