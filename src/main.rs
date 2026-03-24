@@ -1,17 +1,11 @@
-use std::sync::Arc;
-use pixels::{Pixels, SurfaceTexture};
-use skia_safe::PaintStyle::Stroke;
-use skia_safe::RGB;
-use vector2d::Vector2D;
-use winit::dpi::LogicalSize;
-use winit::event_loop::EventLoop;
-use winit::window::WindowAttributes;
-use winit::event::{Event, WindowEvent};
-use crate::attributes::type_extensions::InterpolationArithmetics;
-use crate::attributes::{attribute, static_attribute};
-use crate::elements::Element;
 use crate::attributes::attribute::Attribute;
-use crate::attributes::static_attribute::StaticAttribute;
+use crate::attributes::interpolated_attribute::InterpolatedAttribute;
+use crate::attributes::type_extensions::InterpolationArithmetics;
+use crate::elements::Element;
+use skia_safe::RGB;
+use std::time::SystemTime;
+use vector2d::Vector2D;
+use crate::ui::window::Window;
 
 mod elements;
 mod sequence;
@@ -21,8 +15,9 @@ mod ui;
 fn main() {
     let width = 1280_u32;
     let height = 720_u32;
+    println!("Started");
+    let start_time = SystemTime::now();
 
-    println!("Hello, world!");
     let mut sequence = sequence::Sequence::new(width as usize,height as usize);
     //let line = elements::line::Line::new().boxed();
 
@@ -32,11 +27,16 @@ fn main() {
     l2_vec.push(Vector2D::new(300.,300.).into_bsa());
     l2_vec.push(Vector2D::new(80.,700.).into_bsa());
 
+
+    let mut end = InterpolatedAttribute::new();
+    end.add(0.0,0_usize);
+    end.add(1.0,600_usize);
+
     let line2 = elements::line::Line
     {
         points: l2_vec,
         start: 0.0_f32.into_bsa(),
-        end: 1.0_f32.into_bsa(),
+        end: end.boxed(),
         width: 50_f32.into_bsa(),
         color: RGB{ r: 200, g: 200, b:200 }.into_bsa(),
         is_antialias: true,
@@ -44,15 +44,30 @@ fn main() {
     };
     sequence.push(line2.boxed());
 
-    let bytes = sequence.render_frame(100);
-    println!("{:?}", bytes);
-    let mut window = ui::window::Window::new(width, height);
+    let current_frame = 0;
 
-    window.start();
+    let window = Window::new(1280,720);
+    window.run();
 
-    window.update(&bytes);
-    window.update(&bytes);
-    window.update(&bytes);
+    let bytes = sequence.render_frame(current_frame);
+    //let frame = pixels.frame_mut();
+    //for i in 0..bytes.len(){
+    //    frame[i] = bytes[i];
+    //}
+    // write to frame buffer
+    //pixels.render().unwrap();
+    //current_frame += 1;
+
+    //if current_frame > 600 {
+    //    elwt.exit();
+    //}
+
+
+
+    let end_time = SystemTime::now();
+    let duration_time = end_time.duration_since(start_time).unwrap().as_secs();
+    println!("Done! {}",duration_time)
+
 }
 
 
