@@ -1,0 +1,15 @@
+[package]
+name = "motion-k"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+skia-safe = "0.93.1"
+pixels = "0.15.0"
+vector2d = "3.1.1"
+winit = "0.29"
+winit_input_helper = "0.17"
+osmpbf = "0.3"
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
