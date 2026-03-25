@@ -77,7 +77,21 @@ impl MapReader {
         let mut way_refs : HashMap<i64,Vec<i64>> = HashMap::new();
         let mut nodes : HashMap<i64, Vector2D<f64>> = HashMap::new();
 
-        reader.read_ways_and_deps(|way| true, |element|{
+        reader.read_ways_and_deps(|way| {
+            for (key,value) in way.tags(){
+                if key == "highway" {
+                    match value {
+                        "motorway" => {return true},
+                        "trunk" => {return true},
+                        "primary" => {return true},
+                        "secondary" => {return true},
+                        "tertiary" => {return true},
+                        _ => {return false;}
+                    }
+                }
+            }
+            return false;
+        }, |element|{
             match element{
                 Element::Relation(rel) => {
                     rel.members().for_each(|member|{
@@ -162,7 +176,7 @@ impl MotionElement for Map{
             Line {
                 position_offset: self.position.clone(),
                 start: 0f32.into_bsa(),
-                end: 0f32.into_bsa(),
+                end: 1f32.into_bsa(),
                 width: 1.0f32.into_bsa(),
                 color: RGB{r:200, g: 200, b: 200}.into_bsa(),
                 stroke_caps: skia_safe::paint::Cap::Round,

@@ -1,0 +1,114 @@
+use motion_graphics::attributes::attribute::Attribute;
+use motion_graphics::attributes::interpolated_attribute::InterpolatedAttribute;
+use motion_graphics::attributes::type_extensions::InterpolationArithmetics;
+use motion_graphics::elements::Element;
+use skia_safe::RGB;
+use std::time::SystemTime;
+use vector2d::Vector2D;
+use motion_graphics::{elements, sequence};
+use crate::geo::map_generator::{Map, MapReader};
+use crate::ui::window::Window;
+
+mod ui;
+mod motion_graphics;
+mod geo;
+
+fn main() {
+    let width = 1280_u32;
+    let height = 720_u32;
+    println!("Started");
+    let start_time = SystemTime::now();
+
+    let mut sequence = sequence::Sequence::new(width as usize,height as usize);
+    //let line = elements::line::Line::new().boxed();
+
+    let mut l_vec: Vec<Box<dyn Attribute<Vector2D<f32>>>> = Vec::new();
+    l_vec.push(Vector2D::new(10., 10.).into_bsa());
+    l_vec.push(Vector2D::new(1000., 700.).into_bsa());
+    l_vec.push(Vector2D::new(300., 300.).into_bsa());
+    l_vec.push(Vector2D::new(80., 700.).into_bsa());
+
+    let mut end = InterpolatedAttribute::new();
+    end.add(0.0,0_usize);
+    end.add(1.0,600_usize);
+
+    let line = elements::line::Line
+    {
+        position_offset: Vector2D::new(0.0,0.0).into_bsa(),
+        points: l_vec,
+        start: 0.0_f32.into_bsa(),
+        end: end.boxed(),
+        width: 10_f32.into_bsa(),
+        color: RGB{ r: 200, g: 200, b:200 }.into_bsa(),
+        is_antialias: true,
+        stroke_caps: skia_safe::paint::Cap::Round
+    };
+
+    let mut s_vec: Vec<Box<dyn Attribute<Vector2D<f32>>>> = Vec::new();
+    s_vec.push(Vector2D::new(300., 300.).into_bsa());
+    s_vec.push(Vector2D::new(700., 700.).into_bsa());
+    s_vec.push(Vector2D::new(900., 600.).into_bsa());
+    s_vec.push(Vector2D::new(80., 200.).into_bsa());
+
+    let shape = elements::shape::Shape{
+        position_offset: Vector2D::new(0.0,0.0).into_bsa(),
+        points: s_vec,
+        color: RGB{ r: 200, g: 200, b:50 }.into_bsa(),
+        is_antialias: true,
+    };
+
+    //sequence.push(line.boxed());
+    //sequence.push(shape.boxed());
+
+
+    let map_gen = MapReader {
+        path: String::from("osm-data\\arnsberg-regbez-260324.osm.pbf"),
+        level_of_detail: 255,
+    };
+    let map_data = map_gen.import_osm_file();
+
+    let map = Map{
+        position: Vector2D::new(0f32,0f32).into_bsa(),
+        scale: 8000f32.into_bsa(),
+        data: map_data,
+    };
+
+    sequence.push(Box::new(map));
+
+    let mut current_frame = 0;
+
+    let mut window = Window::new(width, height);
+
+    window.redraw_event.push(Box::new(move |buffer|{
+        let bytes = sequence.render_frame(current_frame);
+        for i in 0..bytes.len(){
+            buffer[i] = bytes[i];
+        }
+
+        current_frame += 1;
+    }));
+
+    window.run();
+
+    //let bytes = sequence.render_frame(current_frame);
+    //let frame = pixels.frame_mut();
+    //for i in 0..bytes.len(){
+    //    frame[i] = bytes[i];
+    //}
+    // write to frame buffer
+    //pixels.render().unwrap();
+    //current_frame += 1;
+
+    //if current_frame > 600 {
+    //    elwt.exit();
+    //}
+
+
+
+    let end_time = SystemTime::now();
+    let duration_time = end_time.duration_since(start_time).unwrap().as_secs();
+    println!("Done! {}",duration_time)
+
+}
+
+
