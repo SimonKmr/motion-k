@@ -80,9 +80,14 @@ fn main() {
     let mut window = Window::new(width, height);
 
     window.redraw_event.push(Box::new(move |buffer|{
-        let bytes = sequence.render_frame(current_frame);
-        for i in 0..bytes.len(){
-            buffer[i] = bytes[i];
+        let mut bytes = sequence.render_frame(current_frame);
+        for (i,byte_chunk) in bytes.chunks_exact_mut(4).enumerate() {
+            //rgba -> bgra
+
+            buffer[i*4+0] = byte_chunk[2]; //red -> blue
+            buffer[i*4+1] = byte_chunk[1]; //green
+            buffer[i*4+2] = byte_chunk[0]; //blue -> red
+            buffer[i*4+3] = byte_chunk[3]; //alpha
         }
 
         current_frame += 1;
