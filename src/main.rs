@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use motion_graphics::attributes::attribute::Attribute;
 use motion_graphics::attributes::interpolated_attribute::InterpolatedAttribute;
 use motion_graphics::attributes::type_extensions::InterpolationArithmetics;
@@ -6,7 +7,8 @@ use skia_safe::RGB;
 use std::time::SystemTime;
 use vector2d::Vector2D;
 use motion_graphics::{elements, sequence};
-use crate::geo::map_generator::{Map, MapReader};
+use crate::geo::map_generator::{Map, MapReader, MapSelectionSettings};
+use crate::geo::style::{MapStyleSettings, WayStyleSettings};
 use crate::ui::window::Window;
 
 mod ui;
@@ -61,16 +63,24 @@ fn main() {
     //sequence.push(shape.boxed());
 
 
-    let map_gen = MapReader {
-        path: String::from("osm-data\\arnsberg-regbez-260324.osm.pbf"),
-        level_of_detail: 255,
-    };
+    let map_gen = MapReader::new(
+        String::from("osm-data\\arnsberg-regbez-260324.osm.pbf"),
+        Some(Vector2D::new(51.5705923,8.1070401)),
+        None);
+
     let map_data = map_gen.import_osm_file();
 
+
+
+
+
+    let map_style = MapStyleSettings::default();
+
     let map = Map{
-        position: Vector2D::new(0f32,0f32).into_bsa(),
-        scale: 8000f32.into_bsa(),
+        position: Vector2D::new(640f32,360f32).into_bsa(),
+        scale: 5000f32.into_bsa(),
         data: map_data,
+        settings: Some(map_style),
     };
 
     sequence.push(Box::new(map));
