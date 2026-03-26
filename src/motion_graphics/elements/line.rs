@@ -61,10 +61,13 @@ impl Element for Line {
             let p1 = self.points[i-1].get_frame(frame);
             let p2 = self.points[i].get_frame(frame);
 
-            let mut p1_x = p1.x;
-            let mut p1_y = p1.y;
-            let mut p2_x = p2.x;
-            let mut p2_y = p2.y;
+            let offset_x = self.position_offset.get_frame(frame).x;
+            let offset_y = self.position_offset.get_frame(frame).y;
+
+            let mut p1_x = p1.x + offset_x;
+            let mut p1_y = p1.y + offset_y;
+            let mut p2_x = p2.x + offset_x;
+            let mut p2_y = p2.y + offset_y;
 
             let current_distance = get_point_distance(p1,p2) / total_distance;
 
@@ -75,14 +78,14 @@ impl Element for Line {
             if p1_distance < start
             {
                 let d = (p2_distance - start) / current_distance;
-                p1_x = p2.x + (p1.x - p2.x) * d;
-                p1_y = p2.y + (p1.y - p2.y) * d;
+                p1_x = p2.x + offset_x + (p1.x - p2.x) * d;
+                p1_y = p2.y + offset_y + (p1.y - p2.y) * d;
             }
 
             if p2_distance > end {
                 let d = (end - p1_distance) / current_distance;
-                p2_x = p1.x + (p2.x - p1.x) * d;
-                p2_y = p1.y + (p2.y - p1.y) * d;
+                p2_x = p1.x + offset_x + (p2.x - p1.x) * d;
+                p2_y = p1.y + offset_y + (p2.y - p1.y) * d;
             }
 
             p1_distance = p2_distance;
