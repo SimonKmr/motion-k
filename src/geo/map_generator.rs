@@ -1,254 +1,357 @@
-use std::collections::HashMap;
-use std::str::FromStr;
-use osmpbf::{Element, ElementReader, IndexedReader};
-use pixels::wgpu::naga::FastHashMap;
-use skia_safe::{Canvas, RGB};
-use crate::motion_graphics::elements::Element as MotionElement;
-use vector2d::Vector2D;
-use crate::geo::style::MapStyleSettings;
+use crate::geo::style::{Category, MapStyleSettings};
 use crate::motion_graphics::attributes::attribute;
 use crate::motion_graphics::attributes::type_extensions::InterpolationArithmetics;
 use crate::motion_graphics::elements::line::Line;
+use crate::motion_graphics::elements::shape::Shape;
+use crate::motion_graphics::elements::Element as MotionElement;
+use osmpbf::{Element, ElementReader, IndexedReader, RelMemberType, TagIter};
+use serde::{Deserialize, Serialize};
+use skia_safe::{Canvas, Vector, RGB};
+use std::collections::HashMap;
+use std::fs::File;
+use std::path::Path;
+use std::time::Instant;
+use vector2d::Vector2D;
+use crate::motion_graphics::elements::element::DrawInfo;
 
-pub struct MapReader {
+pub struct MapIO {
     pub path: String,
-    pub center_point: Option<Vector2D<f64>>,
-    pub settings: MapSelectionSettings,
+    pub settings: Option<MapStyleSettings>,
 }
 
 pub struct Map{
+    pub geo_position: Box<dyn attribute::Attribute<Vector2D<f32>>>,
     pub position: Box<dyn attribute::Attribute<Vector2D<f32>>>,
     pub scale: Box<dyn attribute::Attribute<f32>>,
     pub data: MapData,
     pub settings: Option<MapStyleSettings>,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct MapData{
-    pub map: HashMap<i64,WayData>,
-    pub center_point: Vector2D<f64>,
-    pub max_point: Vector2D<f64>,
-    pub min_point: Vector2D<f64>,
+    pub relations: Vec<RelationData>,
+    pub ways: Vec<WayData>,
+    //pub points: Vec<Node>
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct RelationData{
+    pub id: i64,
+    pub tag: Option<Tag>,
+    pub outer: Vec<WayData>,
+    pub inner: Vec<WayData>
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct WayData{
     pub id: i64,
-    pub highway_tag: String,
-    pub way_points: Vec<Vector2D<f64>>,
-    pub max_points: Vector2D<f64>,
-    pub min_points: Vector2D<f64>,
+    pub tag: Option<Tag>,
+    pub way_points: Vec<Node>, //Vec<Vector2D<f64>>,
 }
 
-
-pub struct MapSelectionSettings{
-    pub way_settings: HashMap<String,bool>
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Node{
+    pub id: i64,
+    pub tag: Option<Tag>,
+    pub x: f64,
+    pub y: f64,
 }
 
-impl MapReader {
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Tag{
+    pub value: String,
+    pub category: Category,
+}
 
-    pub fn new(path: String, center_point: Option<Vector2D<f64>>, settings: Option<MapSelectionSettings>) -> MapReader {
-        MapReader{
+impl Tag {
+    pub(crate) fn new(category: Category, value: String) -> Tag {
+        Tag{
+            category,
+            value,
+        }
+    }
+
+    pub fn from_osm_tags(tags: TagIter){
+
+    }
+}
+
+impl MapIO {
+
+    pub fn new(path: String, settings: Option<MapStyleSettings>) -> MapIO {
+        MapIO {
             path,
-            center_point,
-            settings: settings.unwrap_or_default(),
+            settings,
         }
     }
 
-    pub fn import_osm_file(&self) -> MapData{
 
-        let ways = self.open_osm();
 
-        let (center_point , max_points, min_points)= {
-            let mut x_max = -f64::INFINITY;
-            let mut x_min = f64::INFINITY;
-            let mut y_max = -f64::INFINITY;
-            let mut y_min = f64::INFINITY;
-            for (_, value) in &ways{
-                for value in value.way_points.iter(){
-                    if x_max < value.x {
-                        x_max = value.x;
-                    }
-                    if y_max < value.y {
-                        y_max = value.y;
-                    }
-                    if x_min > value.x {
-                        x_min = value.x;
-                    }
-                    if y_min > value.y {
-                        y_min = value.y;
-                    }
-                }
-            }
-            let center = self.center_point.unwrap_or(Vector2D::new((x_min + x_max) / 2f64,(y_min + y_max) / 2f64));
+    pub fn load(path: &String, settings: Option<MapStyleSettings>) -> MapData{
 
-            (center, Vector2D::<f64>::new(x_max,y_max),Vector2D::new(x_min,y_min))
-        };
+        let file_name_bin = format!("{path}.bin");
+        let path_bin = Path::new(&path);
 
-        MapData{
-            map: ways,
-            center_point,
-            max_point: max_points,
-            min_point: min_points,
+        return MapIO::import_osm(path,settings);
+
+        if Path::new(&path).exists(){
+            return MapIO::import_binary(&file_name_bin)
+        } else {
+            let res = MapIO::import_osm(path,settings);
+            MapIO::export_binary(file_name_bin,&res);
+            return res
         }
     }
 
-    fn open_osm(&self) -> HashMap<i64, WayData>{
-        let mut reader = IndexedReader::from_path(&self.path).unwrap();
-        let mut way_refs : HashMap<i64,(Vec<i64>,String)> = HashMap::new();
-        let mut nodes : HashMap<i64, Vector2D<f64>> = HashMap::new();
+    pub fn import_osm(path: &String, settings: Option<MapStyleSettings>) -> MapData{
 
-        reader.read_ways_and_deps(|way| {
-            for (key,value) in way.tags(){
-                if key == "highway" {
-                    let way_setting = &self.settings.way_settings;
+        let default_settings = MapStyleSettings::default();
+        let settings = settings.as_ref().unwrap_or(&default_settings);
 
-                    return if way_setting.contains_key(&value.to_string()) {
-                        way_setting[value]
-                    } else {
-                        false
-                    }
-                }
+        let mut nodes = HashMap::<i64,Node>::new();
+        let reader = ElementReader::from_path(&path).unwrap();
+        reader.for_each(|element| {
+            if let Element::Node(node) = element {
+                let id = node.id();
+                nodes.insert(id, Node{
+                    id,
+                    x: node.lat(),
+                    y: node.lon(),
+                    tag: None});
             }
-            false
-        }, |element|{
-            match element{
-                Element::Relation(rel) => {
-                    rel.members().for_each(|member|{
-                        println!("{}",member.member_id);
-                    })
+            else if let Element::DenseNode(node) = element {
+                let id = node.id();
+                nodes.insert(id, Node{
+                    id,
+                    x: node.lat(),
+                    y: node.lon(),
+                    tag: None});
+            } else { }
+
+        }).unwrap();
+
+        let mut _ways = HashMap::<i64,WayData>::new();
+        let reader = ElementReader::from_path(&path).unwrap();
+        reader.for_each(|element| {
+            if let Element::Way(way) = element{
+
+
+                let mut tag : Option<Tag> = None;
+                for _tag in way.tags(){
+                    if settings.filter_by_tag(_tag.0) && settings.filter_by_value(_tag.1){
+                        tag = settings.map_tag_to_category(_tag.0,_tag.1);
+                        break;
+                    }
                 }
 
-                Element::Way(way) => {
-                    let mut _way = Vec::<i64>::new();
-                    let mut _way_type = String::new();
-                    for nid in way.refs() {
-                        _way.push(nid);
+                let mut way_nodes : Vec<Node> = Vec::new();
+                for way_ref in way.refs(){
+                    if nodes.contains_key(&way_ref){
+                        way_nodes.push(nodes[&way_ref].clone());
+                        nodes.remove(&way_ref);
                     }
-                    for (k,v) in way.tags(){
-                        if k == "highway" {
-                            _way_type = v.to_string();
-                        }
-                    }
-                    way_refs.insert(way.id(),(_way,_way_type));
                 }
-                Element::Node(_n) => {
-                    nodes.insert(_n.id(),Vector2D::<f64>::new(_n.lat(),_n.lon()));
-                }
-                Element::DenseNode(_n) => {
-                    nodes.insert(_n.id(),Vector2D::<f64>::new(_n.lat(),_n.lon()));
-                }
-                _ => {}
+
+                let id = way.id();
+                _ways.insert(id, WayData{ id, tag, way_points: way_nodes });
+
             }
         }).unwrap();
 
-        let mut ways : HashMap<i64,WayData> = HashMap::new();
-
-        for (key, ref_nodes) in way_refs.iter() {
-            let mut way = Vec::new();
-            let mut x_max = -f64::INFINITY;
-            let mut x_min = f64::INFINITY;
-            let mut y_max = -f64::INFINITY;
-            let mut y_min = f64::INFINITY;
-
-            for ref_node in &ref_nodes.0 {
-
-                let value =nodes[&ref_node];
-                if x_max < value.x {
-                    x_max = value.x;
-                }
-                if y_max < value.y {
-                    y_max = value.y;
-                }
-                if x_min > value.x {
-                    x_min = value.x;
-                }
-                if y_min > value.y {
-                    y_min = value.y;
+        let mut relations = Vec::<RelationData>::new();
+        let reader = ElementReader::from_path(&path).unwrap();
+        reader.for_each(|element| {
+            if let Element::Relation(relation) = element {
+                let id = relation.id();
+                let mut tag : Option<Tag> = None;
+                for _tag in relation.tags(){
+                    if settings.filter_by_tag(_tag.0) && settings.filter_by_value(_tag.1){
+                        tag = settings.map_tag_to_category(_tag.0,_tag.1);
+                        break;
+                    }
                 }
 
-                way.push(nodes[&ref_node]);
+                let mut inner = Vec::<WayData>::new();
+                let mut outer = Vec::<WayData>::new();
+
+                for member in relation.members(){
+                    match member.member_type{
+                        RelMemberType::Node => {}
+                        RelMemberType::Way => {
+                            let index = member.member_id.clone();
+                            if _ways.contains_key(&index){
+                                let way = _ways[&index].clone();
+                                if way.tag.is_none(){
+                                    outer.push(way);
+                                } else {
+                                    inner.push(way)
+                                }
+                                _ways.remove(&index);
+                            }
+                        }
+                        RelMemberType::Relation => {}
+                    }
+                }
+
+                let relation = RelationData{
+                    id,
+                    tag,
+                    outer,
+                    inner,
+                };
+                relations.push(relation);
             }
+        }).unwrap();
 
+        let mut ways = Vec::<WayData>::new();
+        for way in _ways{ ways.push(way.1.clone()); }
 
-            let data = WayData{
-                id: *key,
-                way_points: way,
-                max_points: Vector2D::new(x_max,y_max),
-                min_points: Vector2D::new(x_min,y_min),
-                highway_tag: ref_nodes.1.to_string(),
-            };
-            ways.insert(*key,data);
+        MapData{
+            relations,
+            ways,
         }
-        ways
+    }
+
+    fn import_binary(path: &String) -> MapData{
+        let bytes = std::fs::read(path).unwrap();
+        let result : MapData = bincode::deserialize(bytes.as_slice()).unwrap();
+        result
+    }
+
+    fn export_binary(path: String, map_data: &MapData) {
+        let bytes = bincode::serialize(map_data);
+        std::fs::write(path, bytes.unwrap()).unwrap();
+    }
+}
+
+impl Map {
+    fn draw_ways(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo){
+
+    }
+
+    fn draw_areas(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo){
+
+    }
+
+    fn draw_relations(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo){
+
+    }
+
+    fn draw_points(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo){
+
     }
 }
 
 impl MotionElement for Map{
-    fn draw_on(&self, frame: usize, canvas: &Canvas) -> Result<(), &'static str> {
+    fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo) -> Result<(), &'static str> {
+
+        let time = Instant::now();
+
+        let default_settings = MapStyleSettings::default();
+        let settings = self.settings.as_ref().unwrap_or(&default_settings);
 
         let scale = self.scale.get_frame(frame);
-        let style_settings_map = self.settings.as_ref().unwrap();
+        let scale_mapped = scale.exp();
 
-        for (k,v) in self.data.map.iter() {
+        let position = self.position.get_frame(frame);
+        let geo_position = self.geo_position.get_frame(frame);
 
+        //
+        for way in &self.data.ways {
             let mut points = Vec::<Box<dyn attribute::Attribute<Vector2D<f32>>>>::new();
-            for wp in v.way_points.iter() {
-                let y = (self.data.center_point.x - wp.x) * scale as f64;
-                let x = (wp.y - self.data.center_point.y) * scale as f64;
-                points.push(Vector2D::new(x as f32, y as f32).into_bsa())
-            }
+            for wp in way.way_points.iter() {
 
-            let highway_tag = &self.data.map[k].highway_tag;
 
-            if(style_settings_map.way_settings.contains_key(highway_tag)){
-                let style_settings_way = &style_settings_map.way_settings[highway_tag];
+                let position_x = wp.x - geo_position.x as f64;
+                let position_y = wp.y - geo_position.y as f64;
 
-                Line {
-                    position_offset: self.position.clone(),
-                    start: 0f32.into_bsa(),
-                    end: 1f32.into_bsa(),
-                    width: style_settings_way.width.into_bsa(),
-                    color: style_settings_way.color.into_bsa(),
-                    stroke_caps: skia_safe::paint::Cap::Round,
-                    is_antialias: true,
-                    points,
-                }.draw_on(frame, canvas)?;
-            } else {
-                Line {
-                    position_offset: self.position.clone(),
-                    start: 0f32.into_bsa(),
-                    end: 1f32.into_bsa(),
-                    width: 1f32.into_bsa(),
-                    color: RGB{r:100, g: 100, b: 100}.into_bsa(),
-                    stroke_caps: skia_safe::paint::Cap::Round,
-                    is_antialias: true,
-                    points,
-                }.draw_on(frame, canvas)?;
+                let y = position_x * scale_mapped as f64;
+                let x = position_y * scale_mapped as f64;
+
+                if  x > -draw_info.width as f64 &&
+                    x < draw_info.width as f64 &&
+                    y > -draw_info.height as f64 &&
+                    y < draw_info.height as f64 {
+
+                    //-y is to flip the map
+                    points.push(Vector2D::new(x as f32, -y as f32).into_bsa())
+                }
             }
 
 
 
-        };
+            let _tag = way.tag.clone();
+            if _tag.is_some(){
+                let _tag = _tag.unwrap();
+                match _tag.category {
+                    Category::Path => {
+                        if(settings.way.contains_key(&_tag.value)){
+                            let style = &settings.way[&_tag.value];
 
+                            //optimization: skip loop if element is not important for zoom level
+                            if style.render_threshold.unwrap_or(10f32) > scale {continue;}
+
+                            let res = Line {
+                                position_offset: self.position.clone(),
+                                start: 0f32.into_bsa(),
+                                end: 1f32.into_bsa(),
+                                width: style.width.into_bsa(),
+                                color: style.color.into_bsa(),
+                                stroke_caps: skia_safe::paint::Cap::Round,
+                                is_antialias: true,
+                                points,
+                            }.draw_on(frame, canvas, draw_info);
+
+                            match res {
+                                Ok(_) => {}
+                                Err(e) => {}
+                            }
+                        }
+                    }
+                    Category::Area => {
+                        if settings.area.contains_key(&_tag.value) {
+                            let style = &settings.area[&_tag.value];
+
+                            let res = Shape {
+                                position_offset: self.position.clone(),
+                                points,
+                                color: style.color.into_bsa(),
+                                is_antialias: true,
+                            }.draw_on(frame, canvas, draw_info);
+
+                            match res {
+                                Ok(_) => {}
+                                Err(e) => {}
+                            }
+                        }
+                    }
+                    Category::Building => {
+                        if settings.building.contains_key(&_tag.value) {
+                            let style = &settings.building[&_tag.value];
+
+                            let res = Shape {
+                                position_offset: self.position.clone(),
+                                points,
+                                color: style.color.into_bsa(),
+                                is_antialias: true,
+                            }.draw_on(frame, canvas, draw_info);
+
+                            match res {
+                                Ok(_) => {}
+                                Err(e) => {}
+                            }
+                        }
+                    }
+                    _ => { }
+                }
+            };
+        }
+
+
+        let elapsed = time.elapsed();
+        println!("Time elapsed is: {}", elapsed.as_millis());
         Ok(())
     }
-}
 
-impl Default for MapSelectionSettings{
-    fn default()->Self{
-        let map : HashMap<String,bool> = [
-            (String::from_str("motorway").unwrap(),true),
-            (String::from_str("trunk").unwrap(),true),
-            (String::from_str("primary").unwrap(),true),
-            (String::from_str("secondary").unwrap(),true),
-            (String::from_str("tertiary").unwrap(),true),
-            (String::from_str("unclassified").unwrap(),true),
-            (String::from_str("residential").unwrap(),true),
-        ].into_iter().collect();
-
-
-        MapSelectionSettings{
-            way_settings: map,
-        }
-    }
 }
 
