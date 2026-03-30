@@ -1,15 +1,15 @@
-use std::collections::HashMap;
+use crate::geo::map_generator::{Map, MapIO};
+use crate::geo::style::MapStyleSettings;
+use crate::ui::window::Window;
 use motion_graphics::attributes::attribute::Attribute;
 use motion_graphics::attributes::interpolated_attribute::InterpolatedAttribute;
 use motion_graphics::attributes::type_extensions::InterpolationArithmetics;
 use motion_graphics::elements::Element;
+use motion_graphics::{elements, sequence};
 use skia_safe::RGB;
+use std::str::FromStr;
 use std::time::SystemTime;
 use vector2d::Vector2D;
-use motion_graphics::{elements, sequence};
-use crate::geo::map_generator::{Map, MapReader, MapSelectionSettings};
-use crate::geo::style::{MapStyleSettings, WayStyleSettings};
-use crate::ui::window::Window;
 
 mod ui;
 mod motion_graphics;
@@ -62,25 +62,25 @@ fn main() {
     //sequence.push(line.boxed());
     //sequence.push(shape.boxed());
 
+    let map_data = crate::geo::map_generator::MapIO::load(
+        &String::from("osm-data\\arnsberg-regbez-260324.osm.pbf"),
+        None
+    );
+    //MapIO::export_binary(String::from_str("test.bin").unwrap(),&map_data);
+    //println!("Exported bin");
 
-    let map_gen = MapReader::new(
-        String::from("osm-data\\arnsberg-regbez-260324.osm.pbf"),
-        Some(Vector2D::new(51.5705923,8.1070401)),
-        None);
+    //let map_data= MapIO::import_binary(String::from_str("test.bin").unwrap());
 
-    let map_data = map_gen.import_osm_file();
-
-
-
-
-
-    let map_style = MapStyleSettings::default();
+    let mut map_scale = InterpolatedAttribute::new();
+    map_scale.add(4f32,0_usize);
+    map_scale.add(10f32,100_usize);
 
     let map = Map{
-        position: Vector2D::new(640f32,360f32).into_bsa(),
-        scale: 5000f32.into_bsa(),
+        position: Vector2D::new(640f32, 360f32).into_bsa(),
+        geo_position: Vector2D::new(51.5705923f32, 8.1070401f32).into_bsa(),
+        scale: map_scale.boxed(),
         data: map_data,
-        settings: Some(map_style),
+        settings: None,
     };
 
     sequence.push(Box::new(map));
@@ -117,8 +117,6 @@ fn main() {
     //if current_frame > 600 {
     //    elwt.exit();
     //}
-
-
 
     let end_time = SystemTime::now();
     let duration_time = end_time.duration_since(start_time).unwrap().as_secs();
