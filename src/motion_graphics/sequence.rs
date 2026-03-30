@@ -2,6 +2,7 @@ use std::cell::{Cell, RefCell};
 use crate::motion_graphics::elements;
 use skia_safe::{surfaces, Color, ISize};
 use vector2d::Vector2D;
+use crate::motion_graphics::elements::element::DrawInfo;
 
 pub struct Sequence{
     start_frame: usize,
@@ -17,7 +18,7 @@ impl Sequence {
             start_frame: 0,
             end_frame: 0,
             resolution: Vector2D::new(width, height),
-            info: skia_safe::ImageInfo::new_a8(skia_safe::ISize::new(width as i32, height  as i32)),
+            info: skia_safe::ImageInfo::new_a8(ISize::new(width as i32, height  as i32)),
             elements: RefCell::new(Vec::new()),
         }
     }
@@ -32,9 +33,13 @@ impl Sequence {
         let mut canvas = surface.canvas();
 
         canvas.clear(Color::BLACK);
+        let draw_info = DrawInfo{
+            width : self.resolution.x as f32,
+            height : self.resolution.y as f32,
+        };
 
         for e in self.elements.borrow().iter(){
-            match e.draw_on(frame, &mut canvas) {
+            match e.draw_on(frame, &mut canvas, &draw_info) {
                 Ok(_) => {},
                 Err(e) => {println!("{}",e)}
             }

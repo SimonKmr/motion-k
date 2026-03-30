@@ -2,6 +2,7 @@ use skia_safe::{Canvas, Path, PathFillType, Point, RGB};
 use vector2d::Vector2D;
 use crate::motion_graphics::attributes::attribute::Attribute;
 use crate::motion_graphics::elements::Element;
+use crate::motion_graphics::elements::element::DrawInfo;
 
 pub struct Shape {
     pub position_offset: Box<dyn Attribute<Vector2D<f32>>>,
@@ -11,7 +12,7 @@ pub struct Shape {
 }
 
 impl Element for Shape{
-    fn draw_on(&self, frame: usize, canvas: &Canvas) -> Result<(), &'static str> {
+    fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo) -> Result<(), &'static str> {
 
         if self.points.len() < 3 { return Err("Shape must have at least three points"); }
 

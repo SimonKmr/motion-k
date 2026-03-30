@@ -2,6 +2,7 @@ use skia_safe::{Canvas, Point, RGB};
 use vector2d::Vector2D;
 use crate::motion_graphics::elements::Element;
 use crate::motion_graphics::attributes::attribute::Attribute;
+use crate::motion_graphics::elements::element::DrawInfo;
 
 pub struct Line{
     pub position_offset: Box<dyn Attribute<Vector2D<f32>>>,
@@ -21,7 +22,7 @@ impl Line{
 }
 
 impl Element for Line {
-    fn draw_on(&self, frame: usize, canvas: &Canvas) -> Result<(),&'static str>
+    fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo) -> Result<(),&'static str>
     {
         if self.points.len() < 2 { return Err("Line must have at least two points"); }
 
