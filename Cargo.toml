@@ -15,3 +15,6 @@ serde = { version = "1.0.228", features = ["derive"] }
 
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]
+
+[profile.release]
+debug = true

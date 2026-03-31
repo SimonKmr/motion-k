@@ -50,8 +50,8 @@ fn main() {
     //let map_data= MapIO::import_binary(String::from_str("test.bin").unwrap());
 
     let mut map_scale = InterpolatedAttribute::new();
-    map_scale.add(11f32,0_usize);
-    map_scale.add(11.3f32,100_usize);
+    map_scale.add(8f32,0_usize);
+    map_scale.add(8.1f32,100_usize);
 
     let map = Map{
         position: Vector2D::new(640f32, 360f32).into_bsa(),

@@ -144,7 +144,9 @@ impl Default for MapStyleSettings{
                    WayStyleSettings::new(1f32,road_color,Some(8f32)));
 
 
-
+        //oklch(0.5297 0.0851 202.43)
+        way.insert(String::from("stream"),
+                   WayStyleSettings::new(3f32,RGB{r: 22 , g: 122, b: 129},None));
 
 
         let mut area = HashMap::new();
@@ -220,6 +222,8 @@ impl Default for MapStyleSettings{
         area.insert(String::from("farmyard"),
                     AreaStyleSettings::new(RGB{r: 184 , g: 131, b: 120}));
 
+
+
         let mut building = HashMap::new();
 
         building.insert(String::from("yes"),
@@ -270,6 +274,7 @@ impl MapStyleSettings{
         let mut _category: Category = Category::NotSpecified;
         match tag{
             "highway" => { _category = Category::Path; }
+            "waterway" => { _category = Category::Path; }
             "natural" => { _category = Category::Area; }
             "landuse" => { _category = Category::Area; }
             "amenity" => { _category = Category::Area; }

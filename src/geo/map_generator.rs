@@ -90,6 +90,9 @@ impl MapIO {
         let settings = settings.as_ref().unwrap_or(&default_settings);
 
         let mut nodes = HashMap::<i64,Node>::new();
+        let mut _ways = HashMap::<i64,WayData>::new();
+        let mut relations = Vec::<RelationData>::new();
+
         let reader = ElementReader::from_path(&path).unwrap();
         reader.for_each(|element| {
             if let Element::Node(node) = element {
@@ -107,14 +110,7 @@ impl MapIO {
                     x: node.lat(),
                     y: node.lon(),
                     tag: None});
-            } else { }
-
-        }).unwrap();
-
-        let mut _ways = HashMap::<i64,WayData>::new();
-        let reader = ElementReader::from_path(&path).unwrap();
-        reader.for_each(|element| {
-            if let Element::Way(way) = element{
+            } else if let Element::Way(way) = element{
                 let mut tag : Option<Tag> = None;
                 for _tag in way.tags(){
                     if settings.filter_by_tag(_tag.0) && settings.filter_by_value(_tag.1){
@@ -132,13 +128,7 @@ impl MapIO {
 
                 let id = way.id();
                 _ways.insert(id, WayData{ id, tag, way_points: way_nodes });
-            }
-        }).unwrap();
-
-        let mut relations = Vec::<RelationData>::new();
-        let reader = ElementReader::from_path(&path).unwrap();
-        reader.for_each(|element| {
-            if let Element::Relation(relation) = element {
+            } else if let Element::Relation(relation) = element {
                 let id = relation.id();
                 let mut tag : Option<Tag> = None;
 
@@ -199,36 +189,23 @@ impl MapIO {
 }
 
 impl RelationData {
-    fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map){
-        self.draw_area(frame, canvas, draw_info, parent, &self.outer);
-        self.draw_area(frame, canvas, draw_info, parent, &self.inner);
-        self.draw_area(frame, canvas, draw_info, parent, &self.empty);
+    fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map, map_transform: &MapTransform){
+        self.draw_area(frame, canvas, draw_info, parent, map_transform, &self.outer);
+        self.draw_area(frame, canvas, draw_info, parent, map_transform, &self.inner);
+        self.draw_area(frame, canvas, draw_info, parent, map_transform, &self.empty);
     }
 
-    fn draw_area(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map, area: &Vec<WayData>){
-        let scale = parent.scale.get_frame(frame);
-        let scale_mapped = scale.exp();
-
-        let position = parent.position.get_frame(frame).into_ba();
-        let geo_position = parent.geo_position.get_frame(frame);
-
+    fn draw_area(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map, map_transform: &MapTransform, area: &Vec<WayData>){
         let mut points = Vec::<Box<dyn attribute::Attribute<Vector2D<f32>>>>::new();
         for way_data in area {
             for wp in way_data.way_points.iter() {
-                let position_x = wp.x - geo_position.x as f64;
-                let position_y = wp.y - geo_position.y as f64;
+                let position_x = wp.x - map_transform.pos_geo.x as f64;
+                let position_y = wp.y - map_transform.pos_geo.y as f64;
 
-                let y = position_x * scale_mapped as f64;
-                let x = position_y * scale_mapped as f64;
+                let y = position_x * map_transform.scale as f64;
+                let x = position_y * map_transform.scale as f64;
 
-                if  x > -draw_info.width as f64 &&
-                    x < draw_info.width as f64 &&
-                    y > -draw_info.height as f64 &&
-                    y < draw_info.height as f64 {
-
-                    //-y is to flip the map
-                    points.push(Vector2D::new(x as f32, -y as f32).into_bsa())
-                }
+                points.push(Vector2D::new(x as f32, -y as f32).into_bsa())
             }
         }
 
@@ -242,7 +219,7 @@ impl RelationData {
                     if settings.area.contains_key(&_tag.value) {
                         let style = &settings.area[&_tag.value];
                         let res = style
-                            .element(position, &points)
+                            .element(map_transform.pos.into_ba(), &points)
                             .draw_on(frame, canvas, draw_info);
 
                         match res {
@@ -258,32 +235,27 @@ impl RelationData {
 }
 
 impl WayData {
-    fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map){
+    fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map, map_transform: &MapTransform){
         let default_settings = MapStyleSettings::default();
         let settings = parent.settings.as_ref().unwrap_or(&default_settings);
 
-        let scale = parent.scale.get_frame(frame);
-        let scale_mapped = scale.exp();
-
-        let position = parent.position.get_frame(frame).into_ba();
-        let geo_position = parent.geo_position.get_frame(frame);
-
         let mut points = Vec::<Box<dyn attribute::Attribute<Vector2D<f32>>>>::new();
         for wp in self.way_points.iter() {
-            let position_x = wp.x - geo_position.x as f64;
-            let position_y = wp.y - geo_position.y as f64;
+            let position_x = wp.x - map_transform.pos_geo.x as f64;
+            let position_y = wp.y - map_transform.pos_geo.y as f64;
 
-            let y = position_x * scale_mapped as f64;
-            let x = position_y * scale_mapped as f64;
+            let y = position_x * map_transform.scale as f64;
+            let x = position_y * map_transform.scale as f64;
 
-            if  x > -draw_info.width as f64 &&
+            if  !(x > -draw_info.width as f64 &&
                 x < draw_info.width as f64 &&
                 y > -draw_info.height as f64 &&
-                y < draw_info.height as f64 {
-
-                //-y is to flip the map
-                points.push(Vector2D::new(x as f32, -y as f32).into_bsa())
+                y < draw_info.height as f64) {
+                return;
             }
+
+            //-y is to flip the map
+            points.push(Vector2D::new(x as f32, -y as f32).into_bsa())
         }
 
         let _tag = &self.tag.clone();
@@ -294,7 +266,7 @@ impl WayData {
                     if settings.way.contains_key(&_tag.value) {
                         let style = &settings.way[&_tag.value];
                         let res = style
-                            .element(position,&points)
+                            .element(map_transform.pos.into_ba(),&points)
                             .draw_on(frame, canvas, draw_info);
 
                         match res {
@@ -307,7 +279,7 @@ impl WayData {
                     if settings.area.contains_key(&_tag.value) {
                         let style = &settings.area[&_tag.value];
                         let res = style
-                            .element(position, &points)
+                            .element(map_transform.pos.into_ba(), &points)
                             .draw_on(frame, canvas, draw_info);
 
                         match res {
@@ -320,7 +292,7 @@ impl WayData {
                     if settings.building.contains_key(&_tag.value) {
                         let style = &settings.building[&_tag.value];
                         let res = style
-                            .element(position, &points)
+                            .element(map_transform.pos.into_ba(), &points)
                             .draw_on(frame, canvas, draw_info);
 
                         match res {
@@ -339,17 +311,30 @@ impl MotionElement for Map{
     fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo) -> Result<(), &'static str> {
         let time = Instant::now();
 
+        let position = self.position.get_frame(frame);
+        let scale = self.scale.get_frame(frame);
+        let scale_mapped = scale.exp();
+        let geo_position = self.geo_position.get_frame(frame);
+
+        let map_transform = &MapTransform {scale: scale_mapped, pos_geo: geo_position, pos: position};
+
         for relation in &self.data.relations{
-            relation.draw_on(frame,  canvas, draw_info, &self);
+            relation.draw_on(frame,  canvas, draw_info, &self, map_transform);
         }
 
         for way in &self.data.ways{
-            way.draw_on(frame,canvas,draw_info,&self);
+            way.draw_on(frame,canvas,draw_info,&self, map_transform);
         }
 
         let elapsed = time.elapsed();
         println!("Time elapsed is: {}", elapsed.as_millis());
         Ok(())
     }
+}
+
+pub struct MapTransform {
+    scale: f32,
+    pos_geo: Vector2D<f32>,
+    pos: Vector2D<f32>,
 }
 
