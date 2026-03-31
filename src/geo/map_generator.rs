@@ -18,7 +18,7 @@ pub struct Map{
     pub position: Box<dyn attribute::Attribute<Vector2D<f32>>>,
     pub scale: Box<dyn attribute::Attribute<f32>>,
     pub data: MapData,
-    pub settings: Option<MapStyleSettings>,
+    pub settings: MapStyleSettings,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -209,8 +209,7 @@ impl RelationData {
             }
         }
 
-        let default_settings = MapStyleSettings::default();
-        let settings = parent.settings.as_ref().unwrap_or(&default_settings);
+        let settings = &parent.settings;
         let _tag = &self.tag.clone();
         if _tag.is_some(){
             let _tag = _tag.clone().unwrap();
@@ -236,8 +235,7 @@ impl RelationData {
 
 impl WayData {
     fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map, map_transform: &MapTransform){
-        let default_settings = MapStyleSettings::default();
-        let settings = parent.settings.as_ref().unwrap_or(&default_settings);
+        let settings = &parent.settings;
 
         let mut points = Vec::<Box<dyn attribute::Attribute<Vector2D<f32>>>>::new();
         for wp in self.way_points.iter() {

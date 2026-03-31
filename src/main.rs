@@ -58,7 +58,7 @@ fn main() {
         geo_position: Vector2D::new(51.41484f32, 8.39553f32).into_bsa(),
         scale: map_scale.boxed(),
         data: map_data,
-        settings: None,
+        settings: MapStyleSettings::default(),
     };
 
     sequence.push(Box::new(map));
@@ -99,7 +99,6 @@ fn main() {
     let end_time = SystemTime::now();
     let duration_time = end_time.duration_since(start_time).unwrap().as_secs();
     println!("Done! {}",duration_time)
-
 }
 
 
