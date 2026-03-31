@@ -4,14 +4,14 @@ use crate::motion_graphics::attributes::attribute::Attribute;
 use crate::motion_graphics::elements::Element;
 use crate::motion_graphics::elements::element::DrawInfo;
 
-pub struct Shape {
+pub struct Shape<'a> {
     pub position_offset: Box<dyn Attribute<Vector2D<f32>>>,
-    pub points: Vec<Box<dyn Attribute<Vector2D<f32>>>>,
+    pub points: &'a Vec<Box<dyn Attribute<Vector2D<f32>>>>,
     pub color: Box< dyn Attribute<RGB>>,
     pub is_antialias: bool,
 }
 
-impl Element for Shape{
+impl Element for Shape<'_>{
     fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo) -> Result<(), &'static str> {
 
         if self.points.len() < 3 { return Err("Shape must have at least three points"); }
@@ -19,7 +19,7 @@ impl Element for Shape{
         let position_offset = self.position_offset.get_frame(frame);
         //vec2d -> sk_point
         let mut sk_points : Vec<Point> = Vec::new();
-        for vec2d in &self.points{
+        for vec2d in self.points{
             let vec2d = vec2d.get_frame(frame);
             let x = vec2d.x + position_offset.x;
             let y = vec2d.y + position_offset.y;

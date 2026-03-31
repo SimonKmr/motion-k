@@ -34,33 +34,11 @@ fn main() {
     end.add(0.0,0_usize);
     end.add(1.0,600_usize);
 
-    let line = elements::line::Line
-    {
-        position_offset: Vector2D::new(0.0,0.0).into_bsa(),
-        points: l_vec,
-        start: 0.0_f32.into_bsa(),
-        end: end.boxed(),
-        width: 10_f32.into_bsa(),
-        color: RGB{ r: 200, g: 200, b:200 }.into_bsa(),
-        is_antialias: true,
-        stroke_caps: skia_safe::paint::Cap::Round
-    };
-
     let mut s_vec: Vec<Box<dyn Attribute<Vector2D<f32>>>> = Vec::new();
     s_vec.push(Vector2D::new(300., 300.).into_bsa());
     s_vec.push(Vector2D::new(700., 700.).into_bsa());
     s_vec.push(Vector2D::new(900., 600.).into_bsa());
     s_vec.push(Vector2D::new(80., 200.).into_bsa());
-
-    let shape = elements::shape::Shape{
-        position_offset: Vector2D::new(0.0,0.0).into_bsa(),
-        points: s_vec,
-        color: RGB{ r: 200, g: 200, b:50 }.into_bsa(),
-        is_antialias: true,
-    };
-
-    //sequence.push(line.boxed());
-    //sequence.push(shape.boxed());
 
     let map_data = crate::geo::map_generator::MapIO::load(
         &String::from("osm-data\\arnsberg-regbez-260324.osm.pbf"),
@@ -72,12 +50,12 @@ fn main() {
     //let map_data= MapIO::import_binary(String::from_str("test.bin").unwrap());
 
     let mut map_scale = InterpolatedAttribute::new();
-    map_scale.add(4f32,0_usize);
-    map_scale.add(10f32,100_usize);
+    map_scale.add(11f32,0_usize);
+    map_scale.add(11.3f32,100_usize);
 
     let map = Map{
         position: Vector2D::new(640f32, 360f32).into_bsa(),
-        geo_position: Vector2D::new(51.5705923f32, 8.1070401f32).into_bsa(),
+        geo_position: Vector2D::new(51.41484f32, 8.39553f32).into_bsa(),
         scale: map_scale.boxed(),
         data: map_data,
         settings: None,

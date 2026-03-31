@@ -1,23 +1,17 @@
 use crate::geo::style::{Category, MapStyleSettings};
 use crate::motion_graphics::attributes::attribute;
 use crate::motion_graphics::attributes::type_extensions::InterpolationArithmetics;
-use crate::motion_graphics::elements::line::Line;
-use crate::motion_graphics::elements::shape::Shape;
+use crate::motion_graphics::elements::element::DrawInfo;
 use crate::motion_graphics::elements::Element as MotionElement;
-use osmpbf::{Element, ElementReader, IndexedReader, RelMemberType, TagIter};
+use osmpbf::{Element, ElementReader};
 use serde::{Deserialize, Serialize};
-use skia_safe::{Canvas, Vector, RGB};
+use skia_safe::Canvas;
 use std::collections::HashMap;
-use std::fs::File;
 use std::path::Path;
 use std::time::Instant;
 use vector2d::Vector2D;
-use crate::motion_graphics::elements::element::DrawInfo;
 
-pub struct MapIO {
-    pub path: String,
-    pub settings: Option<MapStyleSettings>,
-}
+pub struct MapIO { }
 
 pub struct Map{
     pub geo_position: Box<dyn attribute::Attribute<Vector2D<f32>>>,
@@ -39,14 +33,15 @@ pub struct RelationData{
     pub id: i64,
     pub tag: Option<Tag>,
     pub outer: Vec<WayData>,
-    pub inner: Vec<WayData>
+    pub inner: Vec<WayData>,
+    pub empty: Vec<WayData>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct WayData{
     pub id: i64,
     pub tag: Option<Tag>,
-    pub way_points: Vec<Node>, //Vec<Vector2D<f64>>,
+    pub way_points: Vec<Node>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -70,23 +65,9 @@ impl Tag {
             value,
         }
     }
-
-    pub fn from_osm_tags(tags: TagIter){
-
-    }
 }
 
 impl MapIO {
-
-    pub fn new(path: String, settings: Option<MapStyleSettings>) -> MapIO {
-        MapIO {
-            path,
-            settings,
-        }
-    }
-
-
-
     pub fn load(path: &String, settings: Option<MapStyleSettings>) -> MapData{
 
         let file_name_bin = format!("{path}.bin");
@@ -94,13 +75,13 @@ impl MapIO {
 
         return MapIO::import_osm(path,settings);
 
-        if Path::new(&path).exists(){
-            return MapIO::import_binary(&file_name_bin)
-        } else {
-            let res = MapIO::import_osm(path,settings);
-            MapIO::export_binary(file_name_bin,&res);
-            return res
-        }
+        // if Path::new(&path).exists(){
+        //     return MapIO::import_binary(&file_name_bin)
+        // } else {
+        //     let res = MapIO::import_osm(path,settings);
+        //     MapIO::export_binary(file_name_bin,&res);
+        //     return res
+        // }
     }
 
     pub fn import_osm(path: &String, settings: Option<MapStyleSettings>) -> MapData{
@@ -134,8 +115,6 @@ impl MapIO {
         let reader = ElementReader::from_path(&path).unwrap();
         reader.for_each(|element| {
             if let Element::Way(way) = element{
-
-
                 let mut tag : Option<Tag> = None;
                 for _tag in way.tags(){
                     if settings.filter_by_tag(_tag.0) && settings.filter_by_value(_tag.1){
@@ -148,13 +127,11 @@ impl MapIO {
                 for way_ref in way.refs(){
                     if nodes.contains_key(&way_ref){
                         way_nodes.push(nodes[&way_ref].clone());
-                        nodes.remove(&way_ref);
                     }
                 }
 
                 let id = way.id();
                 _ways.insert(id, WayData{ id, tag, way_points: way_nodes });
-
             }
         }).unwrap();
 
@@ -164,8 +141,9 @@ impl MapIO {
             if let Element::Relation(relation) = element {
                 let id = relation.id();
                 let mut tag : Option<Tag> = None;
+
                 for _tag in relation.tags(){
-                    if settings.filter_by_tag(_tag.0) && settings.filter_by_value(_tag.1){
+                    if settings.filter_by_area_tag(_tag.0) && settings.filter_by_value(_tag.1){
                         tag = settings.map_tag_to_category(_tag.0,_tag.1);
                         break;
                     }
@@ -173,23 +151,18 @@ impl MapIO {
 
                 let mut inner = Vec::<WayData>::new();
                 let mut outer = Vec::<WayData>::new();
+                let mut empty = Vec::<WayData>::new();
 
                 for member in relation.members(){
-                    match member.member_type{
-                        RelMemberType::Node => {}
-                        RelMemberType::Way => {
-                            let index = member.member_id.clone();
-                            if _ways.contains_key(&index){
-                                let way = _ways[&index].clone();
-                                if way.tag.is_none(){
-                                    outer.push(way);
-                                } else {
-                                    inner.push(way)
-                                }
-                                _ways.remove(&index);
-                            }
+                    let index = member.member_id.clone();
+                    if _ways.contains_key(&index){
+                        let way = _ways[&index].clone();
+                        match member.role() {
+                            Ok("outer") => {outer.push(way);}
+                            Ok("inner") => {inner.push(way);}
+                            Ok("") => {empty.push(way)}
+                            _ => {}
                         }
-                        RelMemberType::Relation => {}
                     }
                 }
 
@@ -198,6 +171,7 @@ impl MapIO {
                     tag,
                     outer,
                     inner,
+                    empty,
                 };
                 relations.push(relation);
             }
@@ -212,10 +186,10 @@ impl MapIO {
         }
     }
 
-    fn import_binary(path: &String) -> MapData{
+    fn import_binary(path: &String) -> Result<MapData, &'static str>{
         let bytes = std::fs::read(path).unwrap();
         let result : MapData = bincode::deserialize(bytes.as_slice()).unwrap();
-        result
+        Ok(result)
     }
 
     fn export_binary(path: String, map_data: &MapData) {
@@ -224,44 +198,23 @@ impl MapIO {
     }
 }
 
-impl Map {
-    fn draw_ways(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo){
-
+impl RelationData {
+    fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map){
+        self.draw_area(frame, canvas, draw_info, parent, &self.outer);
+        self.draw_area(frame, canvas, draw_info, parent, &self.inner);
+        self.draw_area(frame, canvas, draw_info, parent, &self.empty);
     }
 
-    fn draw_areas(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo){
-
-    }
-
-    fn draw_relations(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo){
-
-    }
-
-    fn draw_points(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo){
-
-    }
-}
-
-impl MotionElement for Map{
-    fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo) -> Result<(), &'static str> {
-
-        let time = Instant::now();
-
-        let default_settings = MapStyleSettings::default();
-        let settings = self.settings.as_ref().unwrap_or(&default_settings);
-
-        let scale = self.scale.get_frame(frame);
+    fn draw_area(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map, area: &Vec<WayData>){
+        let scale = parent.scale.get_frame(frame);
         let scale_mapped = scale.exp();
 
-        let position = self.position.get_frame(frame);
-        let geo_position = self.geo_position.get_frame(frame);
+        let position = parent.position.get_frame(frame).into_ba();
+        let geo_position = parent.geo_position.get_frame(frame);
 
-        //
-        for way in &self.data.ways {
-            let mut points = Vec::<Box<dyn attribute::Attribute<Vector2D<f32>>>>::new();
-            for wp in way.way_points.iter() {
-
-
+        let mut points = Vec::<Box<dyn attribute::Attribute<Vector2D<f32>>>>::new();
+        for way_data in area {
+            for wp in way_data.way_points.iter() {
                 let position_x = wp.x - geo_position.x as f64;
                 let position_y = wp.y - geo_position.y as f64;
 
@@ -277,81 +230,126 @@ impl MotionElement for Map{
                     points.push(Vector2D::new(x as f32, -y as f32).into_bsa())
                 }
             }
-
-
-
-            let _tag = way.tag.clone();
-            if _tag.is_some(){
-                let _tag = _tag.unwrap();
-                match _tag.category {
-                    Category::Path => {
-                        if(settings.way.contains_key(&_tag.value)){
-                            let style = &settings.way[&_tag.value];
-
-                            //optimization: skip loop if element is not important for zoom level
-                            if style.render_threshold.unwrap_or(10f32) > scale {continue;}
-
-                            let res = Line {
-                                position_offset: self.position.clone(),
-                                start: 0f32.into_bsa(),
-                                end: 1f32.into_bsa(),
-                                width: style.width.into_bsa(),
-                                color: style.color.into_bsa(),
-                                stroke_caps: skia_safe::paint::Cap::Round,
-                                is_antialias: true,
-                                points,
-                            }.draw_on(frame, canvas, draw_info);
-
-                            match res {
-                                Ok(_) => {}
-                                Err(e) => {}
-                            }
-                        }
-                    }
-                    Category::Area => {
-                        if settings.area.contains_key(&_tag.value) {
-                            let style = &settings.area[&_tag.value];
-
-                            let res = Shape {
-                                position_offset: self.position.clone(),
-                                points,
-                                color: style.color.into_bsa(),
-                                is_antialias: true,
-                            }.draw_on(frame, canvas, draw_info);
-
-                            match res {
-                                Ok(_) => {}
-                                Err(e) => {}
-                            }
-                        }
-                    }
-                    Category::Building => {
-                        if settings.building.contains_key(&_tag.value) {
-                            let style = &settings.building[&_tag.value];
-
-                            let res = Shape {
-                                position_offset: self.position.clone(),
-                                points,
-                                color: style.color.into_bsa(),
-                                is_antialias: true,
-                            }.draw_on(frame, canvas, draw_info);
-
-                            match res {
-                                Ok(_) => {}
-                                Err(e) => {}
-                            }
-                        }
-                    }
-                    _ => { }
-                }
-            };
         }
 
+        let default_settings = MapStyleSettings::default();
+        let settings = parent.settings.as_ref().unwrap_or(&default_settings);
+        let _tag = &self.tag.clone();
+        if _tag.is_some(){
+            let _tag = _tag.clone().unwrap();
+            match _tag.category {
+                Category::Area => {
+                    if settings.area.contains_key(&_tag.value) {
+                        let style = &settings.area[&_tag.value];
+                        let res = style
+                            .element(position, &points)
+                            .draw_on(frame, canvas, draw_info);
+
+                        match res {
+                            Ok(_) => {}
+                            Err(e) => {}
+                        }
+                    }
+                }
+                _ => { }
+            }
+        }
+    }
+}
+
+impl WayData {
+    fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map){
+        let default_settings = MapStyleSettings::default();
+        let settings = parent.settings.as_ref().unwrap_or(&default_settings);
+
+        let scale = parent.scale.get_frame(frame);
+        let scale_mapped = scale.exp();
+
+        let position = parent.position.get_frame(frame).into_ba();
+        let geo_position = parent.geo_position.get_frame(frame);
+
+        let mut points = Vec::<Box<dyn attribute::Attribute<Vector2D<f32>>>>::new();
+        for wp in self.way_points.iter() {
+            let position_x = wp.x - geo_position.x as f64;
+            let position_y = wp.y - geo_position.y as f64;
+
+            let y = position_x * scale_mapped as f64;
+            let x = position_y * scale_mapped as f64;
+
+            if  x > -draw_info.width as f64 &&
+                x < draw_info.width as f64 &&
+                y > -draw_info.height as f64 &&
+                y < draw_info.height as f64 {
+
+                //-y is to flip the map
+                points.push(Vector2D::new(x as f32, -y as f32).into_bsa())
+            }
+        }
+
+        let _tag = &self.tag.clone();
+        if _tag.is_some() {
+            let _tag = _tag.clone().unwrap();
+            match _tag.category {
+                Category::Path => {
+                    if settings.way.contains_key(&_tag.value) {
+                        let style = &settings.way[&_tag.value];
+                        let res = style
+                            .element(position,&points)
+                            .draw_on(frame, canvas, draw_info);
+
+                        match res {
+                            Ok(_) => {}
+                            Err(e) => {}
+                        }
+                    }
+                }
+                Category::Area => {
+                    if settings.area.contains_key(&_tag.value) {
+                        let style = &settings.area[&_tag.value];
+                        let res = style
+                            .element(position, &points)
+                            .draw_on(frame, canvas, draw_info);
+
+                        match res {
+                            Ok(_) => {}
+                            Err(e) => {}
+                        }
+                    }
+                }
+                Category::Building => {
+                    if settings.building.contains_key(&_tag.value) {
+                        let style = &settings.building[&_tag.value];
+                        let res = style
+                            .element(position, &points)
+                            .draw_on(frame, canvas, draw_info);
+
+                        match res {
+                            Ok(_) => {}
+                            Err(e) => {}
+                        }
+                    }
+                }
+                _ => {}
+            }
+        };
+    }
+}
+
+impl MotionElement for Map{
+    fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo) -> Result<(), &'static str> {
+        let time = Instant::now();
+
+        for relation in &self.data.relations{
+            relation.draw_on(frame,  canvas, draw_info, &self);
+        }
+
+        for way in &self.data.ways{
+            way.draw_on(frame,canvas,draw_info,&self);
+        }
 
         let elapsed = time.elapsed();
         println!("Time elapsed is: {}", elapsed.as_millis());
         Ok(())
     }
-
 }
 

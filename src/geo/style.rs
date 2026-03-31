@@ -1,10 +1,12 @@
-use std::collections::HashMap;
-use osmpbf::TagIter;
+use crate::geo::map_generator::Tag;
+use crate::motion_graphics::attributes::attribute::Attribute;
+use crate::motion_graphics::attributes::type_extensions::InterpolationArithmetics;
+use crate::motion_graphics::elements::line::Line;
+use crate::motion_graphics::elements::shape::Shape;
 use serde::{Deserialize, Serialize};
 use skia_safe::RGB;
-use crate::geo::map_generator::{Tag, WayData};
-use crate::motion_graphics::elements::Element;
-use crate::motion_graphics::elements::shape::Shape;
+use std::collections::HashMap;
+use vector2d::Vector2D;
 
 pub struct MapStyleSettings{
     pub way: HashMap<String,WayStyleSettings>,
@@ -29,7 +31,7 @@ pub struct AreaStyleSettings{
 
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone)]
+#[derive(Serialize, Deserialize, Copy, Clone,PartialEq)]
 pub enum Category{
     NotSpecified,
     Point,
@@ -47,6 +49,21 @@ impl WayStyleSettings{
             render_threshold,
         }
     }
+
+    pub fn element<'a>(
+        &self, position: Box<dyn Attribute<Vector2D<f32>>>,
+        points: &'a Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>> ) -> Line<'a>{
+        Line {
+            position_offset: position,
+            start: 0f32.into_bsa(),
+            end: 1f32.into_bsa(),
+            width: self.width.into_bsa(),
+            color: self.color.into_bsa(),
+            stroke_caps: skia_safe::paint::Cap::Round,
+            is_antialias: true,
+            points,
+        }
+    }
 }
 
 impl AreaStyleSettings{
@@ -54,6 +71,18 @@ impl AreaStyleSettings{
         AreaStyleSettings{
             is_enabled: true,
             color
+        }
+    }
+
+    pub fn element<'a>(
+        &self,
+        position: Box<dyn Attribute<Vector2D<f32>> + 'static>,
+        points: &'a Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>> ) -> Shape<'a>{
+        Shape {
+            position_offset: position,
+            color: self.color.into_bsa(),
+            is_antialias: true,
+            points,
         }
     }
 }
@@ -118,53 +147,93 @@ impl Default for MapStyleSettings{
 
 
 
-        let mut area_settings = HashMap::new();
+        let mut area = HashMap::new();
 
         //oklch(0.5297 0.0851 202.43)
-        area_settings.insert(String::from("water"),
-                                 AreaStyleSettings::new(RGB{r: 22 , g: 122, b: 129}));
+        area.insert(String::from("water"),
+                    AreaStyleSettings::new(RGB{r: 22 , g: 122, b: 129}));
 
         //oklch(0.5297 0.0851 138.34)
-        area_settings.insert(String::from("forest"),
-                             AreaStyleSettings::new(RGB{r: 82 , g: 119, b: 70}));
+        area.insert(String::from("forest"),
+                    AreaStyleSettings::new(RGB{r: 82 , g: 119, b: 70}));
 
         //oklch(0.6602 0.0851 138.34)
-        area_settings.insert(String::from("grassland"),
-                             AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
+        area.insert(String::from("grassland"),
+                    AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
 
         //oklch(0.5297 0.0851 138.34)
-        area_settings.insert(String::from("farmland"),
-                             AreaStyleSettings::new(RGB{r: 136 , g: 155, b: 96}));
+        area.insert(String::from("farmland"),
+                    AreaStyleSettings::new(RGB{r: 136 , g: 155, b: 96}));
+
+        //oklch(0.6602 0.0244 44.33)
+        area.insert(String::from("residential"),
+                    AreaStyleSettings::new(RGB{r: 160 , g: 142, b: 134}));
 
         //oklch(0.6602 0.0686 105.22)
-        area_settings.insert(String::from("residential"),
-                             AreaStyleSettings::new(RGB{r: 152 , g: 149, b: 99}));
-
-        //oklch(0.6602 0.0686 105.22)
-        area_settings.insert(String::from("construction"),
-                             AreaStyleSettings::new(RGB{r: 95 , g: 95, b: 95}));
+        area.insert(String::from("construction"),
+                    AreaStyleSettings::new(RGB{r: 95 , g: 95, b: 95}));
 
         //oklch(0.6602 0.0686 31.51)
-        area_settings.insert(String::from("commercial"),
-                             AreaStyleSettings::new(RGB{r: 184 , g: 131, b: 120}));
+        area.insert(String::from("commercial"),
+                    AreaStyleSettings::new(RGB{r: 184 , g: 131, b: 120}));
 
         //oklch(0.6602 0.0686 31.51)
-        area_settings.insert(String::from("industrial"),
-                             AreaStyleSettings::new(RGB{r: 184 , g: 131, b: 120}));
+        area.insert(String::from("industrial"),
+                    AreaStyleSettings::new(RGB{r: 184 , g: 131, b: 120}));
 
         //oklch(0.6602 0.0686 31.51)
-        area_settings.insert(String::from("retail"),
-                             AreaStyleSettings::new(RGB{r: 184 , g: 131, b: 120}));
+        area.insert(String::from("retail"),
+                    AreaStyleSettings::new(RGB{r: 184 , g: 131, b: 120}));
 
+        area.insert(String::from("park"),
+                    AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
+
+        area.insert(String::from("wood"),
+                    AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
+
+        area.insert(String::from("railway"),
+                    AreaStyleSettings::new(RGB{r: 146 , g: 146, b: 146}));
+
+        area.insert(String::from("parking"),
+                    AreaStyleSettings::new(RGB{r: 146 , g: 146, b: 146}));
+
+        area.insert(String::from("quarry"),
+                    AreaStyleSettings::new(RGB{r: 146 , g: 146, b: 146}));
+
+        area.insert(String::from("cemetery"),
+                    AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
+
+        //oklch(0.6602 0.0244 44.33)
+        area.insert(String::from("school"),
+                    AreaStyleSettings::new(RGB{r: 160 , g: 142, b: 134}));
+
+        area.insert(String::from("grass"),
+                    AreaStyleSettings::new(RGB{r: 151 , g: 191, b: 138}));
+
+        area.insert(String::from("meadow"),
+                    AreaStyleSettings::new(RGB{r: 104 , g: 143, b: 92}));
+
+        area.insert(String::from("scrub"),
+                    AreaStyleSettings::new(RGB{r: 90 , g: 127, b: 78}));
+
+        //oklch(0.6602 0.0686 31.51)
+        area.insert(String::from("farmyard"),
+                    AreaStyleSettings::new(RGB{r: 184 , g: 131, b: 120}));
 
         let mut building = HashMap::new();
 
         building.insert(String::from("yes"),
-                             AreaStyleSettings::new(RGB{r:100, g:100, b:100}));
+                              AreaStyleSettings::new(RGB{r:100, g:100, b:100}));
+
+        building.insert(String::from("house"),
+                        AreaStyleSettings::new(RGB{r:100, g:100, b:100}));
+
+        building.insert(String::from("garage"),
+                        AreaStyleSettings::new(RGB{r:100, g:100, b:100}));
 
         MapStyleSettings{
             way,
-            area: area_settings,
+            area,
             building,
         }
     }
@@ -172,12 +241,16 @@ impl Default for MapStyleSettings{
 
 impl MapStyleSettings{
     pub fn filter_by_tag(&self, key: &str) -> bool{
-        match key {
-            "highway" => true,
-            "natural" => true,
-            "landuse" => true,
-            "building" => true,
-            _ => false
+        match self.map_tag_to_category(key,""){
+            None => { false}
+            Some(_) => { true }
+        }
+    }
+
+    pub fn filter_by_area_tag(&self, key: &str) -> bool{
+        match self.map_tag_to_category(key,""){
+            None => { false}
+            Some(category) => { category.category == Category::Area }
         }
     }
 
@@ -195,20 +268,16 @@ impl MapStyleSettings{
 
     pub fn map_tag_to_category(&self, tag: &str, content: &str) -> Option<Tag>{
         let mut _category: Category = Category::NotSpecified;
-        let mut _type = String::new();
         match tag{
             "highway" => { _category = Category::Path; }
             "natural" => { _category = Category::Area; }
             "landuse" => { _category = Category::Area; }
+            "amenity" => { _category = Category::Area; }
+            "leisure" => { _category = Category::Area; }
             "building" => { _category = Category::Building; }
             _ => { return None;  }
         }
-
         Some(Tag::new(_category, content.to_string()))
-    }
-
-    pub fn map_way_data_to_shape(&self, way_data: &WayData) -> Shape{
-        todo!()
     }
 }
 

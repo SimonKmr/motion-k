@@ -1,5 +1,6 @@
 use skia_safe::RGB;
 use vector2d::Vector2D;
+use crate::motion_graphics::attributes::attribute::Attribute;
 use crate::motion_graphics::attributes::static_attribute::StaticAttribute;
 
 pub(crate) trait InterpolationArithmetics: Copy {
@@ -7,6 +8,7 @@ pub(crate) trait InterpolationArithmetics: Copy {
     fn multiply(self, other:&f32 ) -> Self;
     fn add(self, other: &Self) -> Self;
     fn into_bsa(self) -> Box<StaticAttribute<Self>>;
+    fn into_ba(self) -> Box<dyn Attribute<Self>>;
 }
 
 impl InterpolationArithmetics for f32 {
@@ -23,6 +25,10 @@ impl InterpolationArithmetics for f32 {
     }
 
     fn into_bsa(self) -> Box<StaticAttribute<Self>> {
+        Box::new(StaticAttribute::<Self>::new(self))
+    }
+
+    fn into_ba(self) -> Box<dyn Attribute<Self>>{
         Box::new(StaticAttribute::<Self>::new(self))
     }
 }
@@ -43,6 +49,10 @@ impl InterpolationArithmetics for u8 {
     fn into_bsa(self) -> Box<StaticAttribute<Self>>{
         Box::new(StaticAttribute::<Self>::new(self))
     }
+
+    fn into_ba(self) -> Box<dyn Attribute<Self>>{
+        Box::new(StaticAttribute::<Self>::new(self))
+    }
 }
 
 impl InterpolationArithmetics for u32 {
@@ -61,6 +71,10 @@ impl InterpolationArithmetics for u32 {
     fn into_bsa(self) -> Box<StaticAttribute<Self>>{
         Box::new(StaticAttribute::<Self>::new(self))
     }
+
+    fn into_ba(self) -> Box<dyn Attribute<Self>>{
+        Box::new(StaticAttribute::<Self>::new(self))
+    }
 }
 
 impl InterpolationArithmetics for i32 {
@@ -77,6 +91,10 @@ impl InterpolationArithmetics for i32 {
     }
 
     fn into_bsa(self) -> Box<StaticAttribute<Self>>{
+        Box::new(StaticAttribute::<Self>::new(self))
+    }
+
+    fn into_ba(self) -> Box<dyn Attribute<Self>>{
         Box::new(StaticAttribute::<Self>::new(self))
     }
 }
@@ -106,6 +124,10 @@ impl InterpolationArithmetics for RGB{
     fn into_bsa(self) -> Box<StaticAttribute<Self>>{
         Box::new(StaticAttribute::<Self>::new(self))
     }
+
+    fn into_ba(self) -> Box<dyn Attribute<Self>>{
+        Box::new(StaticAttribute::<Self>::new(self))
+    }
 }
 
 impl InterpolationArithmetics for Vector2D<f32>{
@@ -130,6 +152,10 @@ impl InterpolationArithmetics for Vector2D<f32>{
     fn into_bsa(self) -> Box<StaticAttribute<Self>>{
         Box::new(StaticAttribute::<Self>::new(self))
     }
+
+    fn into_ba(self) -> Box<dyn Attribute<Self>>{
+        Box::new(StaticAttribute::<Self>::new(self))
+    }
 }
 
 impl InterpolationArithmetics for Vector2D<u32>{
@@ -152,6 +178,10 @@ impl InterpolationArithmetics for Vector2D<u32>{
     }
 
     fn into_bsa(self) -> Box<StaticAttribute<Self>>{
+        Box::new(StaticAttribute::<Self>::new(self))
+    }
+
+    fn into_ba(self) -> Box<dyn Attribute<Self>>{
         Box::new(StaticAttribute::<Self>::new(self))
     }
 }
