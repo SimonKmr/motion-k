@@ -1,4 +1,4 @@
-use crate::geo::map_generator::{Map, MapIO};
+use crate::geo::map_generator::{Map};
 use crate::geo::style::MapStyleSettings;
 use crate::ui::window::Window;
 use motion_graphics::attributes::attribute::Attribute;
@@ -10,6 +10,7 @@ use skia_safe::RGB;
 use std::str::FromStr;
 use std::time::SystemTime;
 use vector2d::Vector2D;
+use crate::geo::{map_generator, map_io};
 
 mod ui;
 mod motion_graphics;
@@ -40,22 +41,23 @@ fn main() {
     s_vec.push(Vector2D::new(900., 600.).into_bsa());
     s_vec.push(Vector2D::new(80., 200.).into_bsa());
 
-    let map_data = crate::geo::map_generator::MapIO::load(
+    let map_data = map_io::MapIO::load(
         &String::from("osm-data\\arnsberg-regbez-260324.osm.pbf"),
         None
     );
-    //MapIO::export_binary(String::from_str("test.bin").unwrap(),&map_data);
-    //println!("Exported bin");
-
-    //let map_data= MapIO::import_binary(String::from_str("test.bin").unwrap());
 
     let mut map_scale = InterpolatedAttribute::new();
-    map_scale.add(8f32,0_usize);
-    map_scale.add(8.1f32,100_usize);
+    map_scale.add(8.5f32,0_usize);
+    map_scale.add(9.5f32,1000_usize);
+
+    let mut geo_pos = InterpolatedAttribute::new();
+    geo_pos.add(Vector2D::new(51.40477f32, 8.44694f32),0);
+    geo_pos.add(Vector2D::new(51.40477f32, 8.44694f32),1);
+    //geo_pos.add(Vector2D::new(51.50474f32, 8.06336f32),1000);
 
     let map = Map{
         position: Vector2D::new(640f32, 360f32).into_bsa(),
-        geo_position: Vector2D::new(51.41484f32, 8.39553f32).into_bsa(),
+        geo_position: Box::new(geo_pos),
         scale: map_scale.boxed(),
         data: map_data,
         settings: MapStyleSettings::default(),

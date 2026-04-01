@@ -143,10 +143,13 @@ impl Default for MapStyleSettings{
         way.insert(String::from("track"),
                    WayStyleSettings::new(1f32,road_color,Some(8f32)));
 
+        way.insert(String::from("man_made"),
+                   WayStyleSettings::new(1f32,road_color,Some(8f32)));
+
 
         //oklch(0.5297 0.0851 202.43)
         way.insert(String::from("stream"),
-                   WayStyleSettings::new(3f32,RGB{r: 22 , g: 122, b: 129},None));
+                   WayStyleSettings::new(1f32,RGB{r: 22 , g: 122, b: 129},None));
 
 
         let mut area = HashMap::new();
@@ -275,29 +278,16 @@ impl MapStyleSettings{
         match tag{
             "highway" => { _category = Category::Path; }
             "waterway" => { _category = Category::Path; }
+            "man_made" => { _category = Category::Path; }
             "natural" => { _category = Category::Area; }
             "landuse" => { _category = Category::Area; }
             "amenity" => { _category = Category::Area; }
             "leisure" => { _category = Category::Area; }
             "building" => { _category = Category::Building; }
-            _ => { return None;  }
+
+            _ => { _category = Category::NotSpecified;  }
         }
         Some(Tag::new(_category, content.to_string()))
-    }
-}
-
-pub trait Enable {
-    fn is_enabled(&self) -> bool;
-}
-
-impl Enable for WayStyleSettings{
-    fn is_enabled(&self) -> bool {
-        self.is_enabled
-    }
-}
-impl Enable for AreaStyleSettings{
-    fn is_enabled(&self) -> bool{
-        self.is_enabled
     }
 }
 
