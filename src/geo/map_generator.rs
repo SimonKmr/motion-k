@@ -140,7 +140,7 @@ impl MapIO {
                 }
 
                 let mut inner = Vec::<WayData>::new();
-                let mut outer = Vec::<WayData>::new();
+                let mut outer_unordered = Vec::<WayData>::new();
                 let mut empty = Vec::<WayData>::new();
 
                 for member in relation.members(){
@@ -148,7 +148,7 @@ impl MapIO {
                     if _ways.contains_key(&index){
                         let way = _ways[&index].clone();
                         match member.role() {
-                            Ok("outer") => {outer.push(way);}
+                            Ok("outer") => {outer_unordered.push(way);}
                             Ok("inner") => {inner.push(way);}
                             Ok("") => {empty.push(way)}
                             _ => {}
@@ -156,6 +156,25 @@ impl MapIO {
                     }
                 }
 
+                //order outer
+                let id = 0;
+                let mut outer = Vec::<WayData>::new();
+
+                //if elements are in outer
+                //put the element in
+                if !outer_unordered.is_empty(){
+                    outer.push(outer_unordered.first().unwrap().clone());
+                    for _ in outer_unordered.iter(){
+                        for y in outer_unordered.iter(){
+
+                            if &y.way_points.first().unwrap().id == &outer.last().unwrap().way_points.last().unwrap().id{
+                                outer.push(y.clone());
+                                break;
+                            }
+                        }
+                    }
+                }
+                
                 let relation = RelationData{
                     id,
                     tag,
@@ -191,7 +210,7 @@ impl MapIO {
 impl RelationData {
     fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map, map_transform: &MapTransform){
         self.draw_area(frame, canvas, draw_info, parent, map_transform, &self.outer);
-        self.draw_area(frame, canvas, draw_info, parent, map_transform, &self.inner);
+        //self.draw_area(frame, canvas, draw_info, parent, map_transform, &self.inner);
         self.draw_area(frame, canvas, draw_info, parent, map_transform, &self.empty);
     }
 
@@ -205,7 +224,14 @@ impl RelationData {
                 let y = position_x * map_transform.scale as f64;
                 let x = position_y * map_transform.scale as f64;
 
-                points.push(Vector2D::new(x as f32, -y as f32).into_bsa())
+                if  x > -draw_info.width as f64 &&
+                    x < draw_info.width as f64 &&
+                    y > -draw_info.height as f64 &&
+                    y < draw_info.height as f64 {
+                    points.push(Vector2D::new(x as f32, -y as f32).into_bsa())
+                }
+
+
             }
         }
 
@@ -269,7 +295,7 @@ impl WayData {
 
                         match res {
                             Ok(_) => {}
-                            Err(e) => {}
+                            Err(_) => {}
                         }
                     }
                 }
@@ -282,7 +308,7 @@ impl WayData {
 
                         match res {
                             Ok(_) => {}
-                            Err(e) => {}
+                            Err(_) => {}
                         }
                     }
                 }
