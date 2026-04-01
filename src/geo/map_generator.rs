@@ -11,8 +11,6 @@ use std::path::Path;
 use std::time::Instant;
 use vector2d::Vector2D;
 
-pub struct MapIO { }
-
 pub struct Map{
     pub geo_position: Box<dyn attribute::Attribute<Vector2D<f32>>>,
     pub position: Box<dyn attribute::Attribute<Vector2D<f32>>>,
@@ -32,9 +30,60 @@ pub struct MapData{
 pub struct RelationData{
     pub id: i64,
     pub tag: Option<Tag>,
+    pub draw_orders: Vec<RelationDrawOrder>,
     pub outer: Vec<WayData>,
     pub inner: Vec<WayData>,
     pub empty: Vec<WayData>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct RelationDrawOrder{
+    pub index: usize,
+    pub is_reversed: bool,
+}
+
+impl RelationDrawOrder {
+    pub(crate) fn from_ways(ways: &Vec<WayData>) -> Vec<Self> {
+        let first_node = ways.first().unwrap().way_points.first().unwrap();
+        let last_node = ways.first().unwrap().way_points.last().unwrap();
+
+        for (i,way) in ways[1..].iter().enumerate() {
+            let current_node_start = way.way_points.first().unwrap();
+            let current_node_end = way.way_points.last().unwrap();
+
+            if last_node == current_node_start{
+                //append after
+                //set last_node = current_node_end
+                continue;
+            }
+
+            if first_node == current_node_end{
+                //before
+                //set first_node = current_node_start
+                continue;
+            }
+
+            if first_node == current_node_start {
+                //reversed
+                //set first_node = current_node_end
+                continue;
+            }
+
+            if last_node == current_node_end {
+                //reversed
+                //set last_node = current_node_start
+                continue;
+            }
+
+            let has_remaining_nodes = i < ways.len() - 1;
+            if first_node == last_node && has_remaining_nodes
+            {
+                //first_node =
+            }
+        }
+
+        todo!()
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -44,7 +93,7 @@ pub struct WayData{
     pub way_points: Vec<Node>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct Node{
     pub id: i64,
     pub tag: Option<Tag>,
@@ -52,7 +101,7 @@ pub struct Node{
     pub y: f64,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct Tag{
     pub value: String,
     pub category: Category,
@@ -67,151 +116,11 @@ impl Tag {
     }
 }
 
-impl MapIO {
-    pub fn load(path: &String, settings: Option<MapStyleSettings>) -> MapData{
-
-        let file_name_bin = format!("{path}.bin");
-        let path_bin = Path::new(&path);
-
-        return MapIO::import_osm(path,settings);
-
-        // if Path::new(&path).exists(){
-        //     return MapIO::import_binary(&file_name_bin)
-        // } else {
-        //     let res = MapIO::import_osm(path,settings);
-        //     MapIO::export_binary(file_name_bin,&res);
-        //     return res
-        // }
-    }
-
-    pub fn import_osm(path: &String, settings: Option<MapStyleSettings>) -> MapData{
-
-        let default_settings = MapStyleSettings::default();
-        let settings = settings.as_ref().unwrap_or(&default_settings);
-
-        let mut nodes = HashMap::<i64,Node>::new();
-        let mut _ways = HashMap::<i64,WayData>::new();
-        let mut relations = Vec::<RelationData>::new();
-
-        let reader = ElementReader::from_path(&path).unwrap();
-        reader.for_each(|element| {
-            if let Element::Node(node) = element {
-                let id = node.id();
-                nodes.insert(id, Node{
-                    id,
-                    x: node.lat(),
-                    y: node.lon(),
-                    tag: None});
-            }
-            else if let Element::DenseNode(node) = element {
-                let id = node.id();
-                nodes.insert(id, Node{
-                    id,
-                    x: node.lat(),
-                    y: node.lon(),
-                    tag: None});
-            } else if let Element::Way(way) = element{
-                let mut tag : Option<Tag> = None;
-                for _tag in way.tags(){
-                    if settings.filter_by_tag(_tag.0) && settings.filter_by_value(_tag.1){
-                        tag = settings.map_tag_to_category(_tag.0,_tag.1);
-                        break;
-                    }
-                }
-
-                let mut way_nodes : Vec<Node> = Vec::new();
-                for way_ref in way.refs(){
-                    if nodes.contains_key(&way_ref){
-                        way_nodes.push(nodes[&way_ref].clone());
-                    }
-                }
-
-                let id = way.id();
-                _ways.insert(id, WayData{ id, tag, way_points: way_nodes });
-            } else if let Element::Relation(relation) = element {
-                let id = relation.id();
-                let mut tag : Option<Tag> = None;
-
-                for _tag in relation.tags(){
-                    if settings.filter_by_area_tag(_tag.0) && settings.filter_by_value(_tag.1){
-                        tag = settings.map_tag_to_category(_tag.0,_tag.1);
-                        break;
-                    }
-                }
-
-                let mut inner = Vec::<WayData>::new();
-                let mut outer_unordered = Vec::<WayData>::new();
-                let mut empty = Vec::<WayData>::new();
-
-                for member in relation.members(){
-                    let index = member.member_id.clone();
-                    if _ways.contains_key(&index){
-                        let way = _ways[&index].clone();
-                        match member.role() {
-                            Ok("outer") => {outer_unordered.push(way);}
-                            Ok("inner") => {inner.push(way);}
-                            Ok("") => {empty.push(way)}
-                            _ => {}
-                        }
-                    }
-                }
-
-                //order outer
-                let id = 0;
-                let mut outer = Vec::<WayData>::new();
-
-                //if elements are in outer
-                //put the element in
-                if !outer_unordered.is_empty(){
-                    outer.push(outer_unordered.first().unwrap().clone());
-                    for _ in outer_unordered.iter(){
-                        for y in outer_unordered.iter(){
-
-                            if &y.way_points.first().unwrap().id == &outer.last().unwrap().way_points.last().unwrap().id{
-                                outer.push(y.clone());
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                let relation = RelationData{
-                    id,
-                    tag,
-                    outer,
-                    inner,
-                    empty,
-                };
-                relations.push(relation);
-            }
-        }).unwrap();
-
-        let mut ways = Vec::<WayData>::new();
-        for way in _ways{ ways.push(way.1.clone()); }
-
-        MapData{
-            relations,
-            ways,
-        }
-    }
-
-    fn import_binary(path: &String) -> Result<MapData, &'static str>{
-        let bytes = std::fs::read(path).unwrap();
-        let result : MapData = bincode::deserialize(bytes.as_slice()).unwrap();
-        Ok(result)
-    }
-
-    fn export_binary(path: String, map_data: &MapData) {
-        let bytes = bincode::serialize(map_data);
-        std::fs::write(path, bytes.unwrap()).unwrap();
-    }
-}
-
 impl RelationData {
     fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map, map_transform: &MapTransform){
         self.draw_area(frame, canvas, draw_info, parent, map_transform, &self.outer);
         //self.draw_area(frame, canvas, draw_info, parent, map_transform, &self.inner);
-        self.draw_area(frame, canvas, draw_info, parent, map_transform, &self.empty);
+        //self.draw_area(frame, canvas, draw_info, parent, map_transform, &self.empty);
     }
 
     fn draw_area(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo, parent: &Map, map_transform: &MapTransform, area: &Vec<WayData>){
@@ -230,8 +139,6 @@ impl RelationData {
                     y < draw_info.height as f64 {
                     points.push(Vector2D::new(x as f32, -y as f32).into_bsa())
                 }
-
-
             }
         }
 
