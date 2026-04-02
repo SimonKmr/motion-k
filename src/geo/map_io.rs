@@ -63,15 +63,11 @@ impl MapIO {
                 }
 
                 let mut way_nodes : Vec<Node> = Vec::new();
-                let mut missing = 0;
                 for way_ref in way.refs(){
                     if nodes.contains_key(&way_ref){
                         way_nodes.push(nodes[&way_ref].clone());
-                    } else {
-                        missing += 1
                     }
                 }
-                if missing > 0 {println!("missing: {}",missing);}
 
                 let id = way.id();
                 _ways.insert(id, WayData{ id, tag, way_points: way_nodes });
@@ -103,20 +99,15 @@ impl MapIO {
                             let way = _ways[&index].clone();
                             match member.role() {
                                 Ok("outer") =>
-                                    {
-                                        let len = &way.way_points.len();
-                                        outer.push(way);
-                                        if id == 3505080{
-                                            println!("id: {} | point: {}",id ,len );
-                                        }
-                                    }
+                                    { outer.push(way); }
                                 Ok("inner") => {inner.push(way);}
                                 Ok("") => {empty.push(way)}
                                 _ => {}
                             }
                         }
                     }
-                    let draw_orders = RelationDrawOrder::from_ways(&outer);
+
+                    let draw_orders = RelationDrawOrder::from_ways(&outer).unwrap();
 
                     let relation = RelationData{
                         id,

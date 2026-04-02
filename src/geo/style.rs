@@ -36,6 +36,7 @@ pub enum Category{
     NotSpecified,
     Point,
     Path,
+    Water,
     Area,
     Building,
 }
@@ -94,41 +95,41 @@ impl Default for MapStyleSettings{
         let road_color = RGB{ r: 180, g: 180, b: 180};
 
         way.insert(String::from("motorway"),
-                   WayStyleSettings::new(3f32,road_color,Some(6f32)));
+                   WayStyleSettings::new(6f32,road_color,Some(6f32)));
 
         way.insert(String::from("trunk"),
-                   WayStyleSettings::new(3f32,road_color,Some(6f32)));
+                   WayStyleSettings::new(5f32,road_color,Some(6f32)));
 
         way.insert(String::from("primary"),
-                   WayStyleSettings::new(3f32,road_color,Some(6f32)));
+                   WayStyleSettings::new(5f32,road_color,Some(6f32)));
 
         way.insert(String::from("secondary"),
-                   WayStyleSettings::new(2f32,road_color,Some(6f32)));
+                   WayStyleSettings::new(4f32,road_color,Some(6f32)));
 
         way.insert(String::from("tertiary"),
-                   WayStyleSettings::new(2f32,road_color,Some(7f32)));
+                   WayStyleSettings::new(4f32,road_color,Some(7f32)));
 
         way.insert(String::from("unclassified"),
-                   WayStyleSettings::new(1f32,road_color,Some(7f32)));
+                   WayStyleSettings::new(3f32,road_color,Some(7f32)));
 
         way.insert(String::from("residential"),
-                   WayStyleSettings::new(1f32,road_color,Some(8f32)));
+                   WayStyleSettings::new(3f32,road_color,Some(8f32)));
 
 
         way.insert(String::from("motorway_link"),
-                   WayStyleSettings::new(1f32,road_color,Some(8f32)));
+                   WayStyleSettings::new(2f32,road_color,Some(8f32)));
 
         way.insert(String::from("trunk_link"),
-                   WayStyleSettings::new(1f32,road_color,Some(8f32)));
+                   WayStyleSettings::new(2f32,road_color,Some(8f32)));
 
         way.insert(String::from("primary_link"),
-                   WayStyleSettings::new(1f32,road_color,Some(8f32)));
+                   WayStyleSettings::new(2f32,road_color,Some(8f32)));
 
         way.insert(String::from("secondary_link"),
-                   WayStyleSettings::new(1f32,road_color,Some(8f32)));
+                   WayStyleSettings::new(2f32,road_color,Some(8f32)));
 
         way.insert(String::from("tertiary_link"),
-                   WayStyleSettings::new(1f32,road_color,Some(8f32)));
+                   WayStyleSettings::new(2f32,road_color,Some(8f32)));
 
 
         way.insert(String::from("living_street"),
@@ -146,7 +147,7 @@ impl Default for MapStyleSettings{
         way.insert(String::from("man_made"),
                    WayStyleSettings::new(1f32,road_color,Some(8f32)));
 
-
+        //Water
         //oklch(0.5297 0.0851 202.43)
         way.insert(String::from("stream"),
                    WayStyleSettings::new(1f32,RGB{r: 22 , g: 122, b: 129},None));
@@ -249,7 +250,7 @@ impl Default for MapStyleSettings{
 impl MapStyleSettings{
     pub fn filter_by_tag(&self, key: &str) -> bool{
         match self.map_tag_to_category(key,""){
-            None => { false}
+            None => { false }
             Some(_) => { true }
         }
     }
@@ -277,17 +278,16 @@ impl MapStyleSettings{
         let mut _category: Category = Category::NotSpecified;
         match tag{
             "highway" => { _category = Category::Path; }
-            "waterway" => { _category = Category::Path; }
             "man_made" => { _category = Category::Path; }
             "natural" => { _category = Category::Area; }
             "landuse" => { _category = Category::Area; }
             "amenity" => { _category = Category::Area; }
             "leisure" => { _category = Category::Area; }
             "building" => { _category = Category::Building; }
+            "waterway" => { _category = Category::Water; }
 
-            _ => { _category = Category::NotSpecified;  }
+            _ => { return None }
         }
         Some(Tag::new(_category, content.to_string()))
     }
 }
-

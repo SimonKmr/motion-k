@@ -47,12 +47,12 @@ fn main() {
     );
 
     let mut map_scale = InterpolatedAttribute::new();
-    map_scale.add(8.5f32,0_usize);
-    map_scale.add(9.5f32,1000_usize);
+    map_scale.add(6.5f32,0_usize);
+    map_scale.add(6.5f32,1000_usize);
 
     let mut geo_pos = InterpolatedAttribute::new();
-    geo_pos.add(Vector2D::new(51.40477f32, 8.44694f32),0);
-    geo_pos.add(Vector2D::new(51.40477f32, 8.44694f32),1);
+    geo_pos.add(Vector2D::new(51.57190f32, 8.10225f32),0);
+    geo_pos.add(Vector2D::new(51.40477f32, 8.44694f32),1000);
     //geo_pos.add(Vector2D::new(51.50474f32, 8.06336f32),1000);
 
     let map = Map{
