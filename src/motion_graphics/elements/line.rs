@@ -4,9 +4,9 @@ use crate::motion_graphics::elements::Element;
 use crate::motion_graphics::attributes::attribute::Attribute;
 use crate::motion_graphics::elements::element::DrawInfo;
 
-pub struct Line<'a>{
+pub struct Line{
     pub position_offset: Box<dyn Attribute<Vector2D<f32>>>,
-    pub points: &'a Vec<Box<dyn Attribute<Vector2D<f32>>>>,
+    pub points: Vec<Box<dyn Attribute<Vector2D<f32>>>>,
     pub start: Box<dyn Attribute<f32>>,
     pub end: Box<dyn Attribute<f32>>,
     pub width: Box<dyn Attribute<f32>>,
@@ -15,13 +15,13 @@ pub struct Line<'a>{
     pub is_antialias: bool,
 }
 
-impl Line<'_>{
+impl Line{
     pub fn new() -> Self{
         todo!()
     }
 }
 
-impl Element for Line<'_> {
+impl Element for Line {
     fn draw_on(&self, frame: usize, canvas: &Canvas, draw_info: &DrawInfo) -> Result<(),&'static str>
     {
         if self.points.len() < 2 { return Err("Line must have at least two points"); }

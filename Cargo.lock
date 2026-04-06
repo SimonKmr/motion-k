@@ -1051,6 +1051,7 @@ dependencies = [
  "pixels",
  "serde",
  "skia-safe",
+ "toml",
  "vector2d",
  "winit 0.29.15",
  "winit_input_helper",

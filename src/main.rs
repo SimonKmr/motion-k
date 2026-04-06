@@ -1,16 +1,16 @@
-use crate::geo::map_generator::{Map};
+use crate::geo::map_generator::Map;
 use crate::geo::style::MapStyleSettings;
+use crate::geo::io;
 use crate::ui::window::Window;
 use motion_graphics::attributes::attribute::Attribute;
 use motion_graphics::attributes::interpolated_attribute::InterpolatedAttribute;
 use motion_graphics::attributes::type_extensions::InterpolationArithmetics;
 use motion_graphics::elements::Element;
-use motion_graphics::{elements, sequence};
-use skia_safe::RGB;
+use motion_graphics::sequence;
 use std::str::FromStr;
 use std::time::SystemTime;
 use vector2d::Vector2D;
-use crate::geo::{map_generator, map_io};
+use crate::geo::io::StyleIO;
 
 mod ui;
 mod motion_graphics;
@@ -41,26 +41,31 @@ fn main() {
     s_vec.push(Vector2D::new(900., 600.).into_bsa());
     s_vec.push(Vector2D::new(80., 200.).into_bsa());
 
-    let map_data = map_io::MapIO::load(
+    let map_data = io::MapIO::load(
         &String::from("osm-data\\arnsberg-regbez-260324.osm.pbf"),
         None
     );
 
     let mut map_scale = InterpolatedAttribute::new();
     map_scale.add(6.5f32,0_usize);
-    map_scale.add(6.5f32,1000_usize);
+    map_scale.add(8.5f32,1000_usize);
 
     let mut geo_pos = InterpolatedAttribute::new();
     geo_pos.add(Vector2D::new(51.57190f32, 8.10225f32),0);
     geo_pos.add(Vector2D::new(51.40477f32, 8.44694f32),1000);
     //geo_pos.add(Vector2D::new(51.50474f32, 8.06336f32),1000);
 
+    let style = MapStyleSettings::default();
+    let style_file_path = String::from_str("default_style.toml").unwrap();
+    StyleIO::write_toml(&style_file_path, &style);
+    let default_style = StyleIO::read_toml(&style_file_path);
+
     let map = Map{
         position: Vector2D::new(640f32, 360f32).into_bsa(),
         geo_position: Box::new(geo_pos),
         scale: map_scale.boxed(),
         data: map_data,
-        settings: MapStyleSettings::default(),
+        settings: default_style,
     };
 
     sequence.push(Box::new(map));
@@ -102,5 +107,3 @@ fn main() {
     let duration_time = end_time.duration_since(start_time).unwrap().as_secs();
     println!("Done! {}",duration_time)
 }
-
-

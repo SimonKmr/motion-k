@@ -4,31 +4,45 @@ use crate::motion_graphics::attributes::type_extensions::InterpolationArithmetic
 use crate::motion_graphics::elements::line::Line;
 use crate::motion_graphics::elements::shape::Shape;
 use serde::{Deserialize, Serialize};
-use skia_safe::RGB;
+use skia_safe::RGB as SkiaRGB;
 use std::collections::HashMap;
 use vector2d::Vector2D;
+use crate::motion_graphics::elements::Element;
 
+pub trait Style {
+    fn element(
+        &self,
+        position: Box<dyn Attribute<Vector2D<f32>> + 'static>,
+        points: Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>> ) -> Box<dyn Element> ;
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct MapStyleSettings{
     pub way: HashMap<String,WayStyleSettings>,
     pub area: HashMap<String,AreaStyleSettings>,
     pub building: HashMap<String,AreaStyleSettings>,
 }
 
-
-
+#[derive(Serialize, Deserialize)]
 pub struct WayStyleSettings{
     pub is_enabled: bool,
     pub(crate) width: f32,
     pub(crate) color: RGB,
     ///defines a scale when the value will be displayed when rendering the map
     pub(crate) render_threshold: Option<f32>,
-
 }
 
+#[derive(Serialize, Deserialize, Copy, Clone,PartialEq)]
+pub struct RGB {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct AreaStyleSettings{
     pub is_enabled: bool,
     pub(crate) color: RGB,
-
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone,PartialEq)]
@@ -41,6 +55,16 @@ pub enum Category{
     Building,
 }
 
+impl RGB {
+    pub fn into_skia_rgb(self) -> SkiaRGB {
+        SkiaRGB {
+            r: self.r,
+            g: self.g,
+            b: self.b,
+        }
+    }
+}
+
 impl WayStyleSettings{
     pub fn new(width: f32, color: RGB, render_threshold: Option<f32>) -> WayStyleSettings{
         WayStyleSettings{
@@ -51,19 +75,34 @@ impl WayStyleSettings{
         }
     }
 
-    pub fn element<'a>(
+
+}
+
+impl Style for WayStyleSettings{
+    fn element(
         &self, position: Box<dyn Attribute<Vector2D<f32>>>,
-        points: &'a Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>> ) -> Line<'a>{
-        Line {
+        points: Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>> ) -> Box<dyn Element> {
+        Box::new(Line {
             position_offset: position,
             start: 0f32.into_bsa(),
             end: 1f32.into_bsa(),
             width: self.width.into_bsa(),
-            color: self.color.into_bsa(),
+            color: self.color.into_skia_rgb().into_bsa(),
             stroke_caps: skia_safe::paint::Cap::Round,
             is_antialias: true,
             points,
-        }
+        })
+    }
+}
+
+impl Style for AreaStyleSettings{
+    fn element(&self, position: Box<dyn Attribute<Vector2D<f32>> + 'static>, points: Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>>) -> Box<dyn Element> {
+        Box::new(Shape {
+            position_offset: position,
+            color: self.color.into_skia_rgb().into_bsa(),
+            is_antialias: true,
+            points,
+        })
     }
 }
 
@@ -75,13 +114,13 @@ impl AreaStyleSettings{
         }
     }
 
-    pub fn element<'a>(
+    pub fn element(
         &self,
         position: Box<dyn Attribute<Vector2D<f32>> + 'static>,
-        points: &'a Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>> ) -> Shape<'a>{
+        points: Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>> ) -> Shape{
         Shape {
             position_offset: position,
-            color: self.color.into_bsa(),
+            color: self.color.into_skia_rgb().into_bsa(),
             is_antialias: true,
             points,
         }

@@ -12,6 +12,7 @@ winit_input_helper = "0.17"
 osmpbf = "0.3"
 bincode = "1.3.3"
 serde = { version = "1.0.228", features = ["derive"] }
+toml = "*"
 
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]
