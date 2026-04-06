@@ -14,6 +14,8 @@ pub trait Style {
         &self,
         position: Box<dyn Attribute<Vector2D<f32>> + 'static>,
         points: Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>> ) -> Box<dyn Element> ;
+
+    fn render_threshold(&self) -> Option<f32>;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -43,6 +45,7 @@ pub struct RGB {
 pub struct AreaStyleSettings{
     pub is_enabled: bool,
     pub(crate) color: RGB,
+    pub(crate) render_threshold: Option<f32>,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone,PartialEq)]
@@ -93,6 +96,10 @@ impl Style for WayStyleSettings{
             points,
         })
     }
+
+    fn render_threshold(&self) -> Option<f32> {
+        self.render_threshold.clone()
+    }
 }
 
 impl Style for AreaStyleSettings{
@@ -104,13 +111,18 @@ impl Style for AreaStyleSettings{
             points,
         })
     }
+
+    fn render_threshold(&self) -> Option<f32> {
+        self.render_threshold.clone()
+    }
 }
 
 impl AreaStyleSettings{
     pub fn new(color: RGB) -> AreaStyleSettings{
         AreaStyleSettings{
             is_enabled: true,
-            color
+            color,
+            render_threshold: None,
         }
     }
 
@@ -146,13 +158,13 @@ impl Default for MapStyleSettings{
                    WayStyleSettings::new(4f32,road_color,Some(6f32)));
 
         way.insert(String::from("tertiary"),
-                   WayStyleSettings::new(4f32,road_color,Some(7f32)));
-
-        way.insert(String::from("unclassified"),
                    WayStyleSettings::new(3f32,road_color,Some(7f32)));
 
+        way.insert(String::from("unclassified"),
+                   WayStyleSettings::new(2f32,road_color,Some(7f32)));
+
         way.insert(String::from("residential"),
-                   WayStyleSettings::new(3f32,road_color,Some(8f32)));
+                   WayStyleSettings::new(2f32,road_color,Some(8f32)));
 
 
         way.insert(String::from("motorway_link"),
@@ -230,8 +242,7 @@ impl Default for MapStyleSettings{
         area.insert(String::from("retail"),
                     AreaStyleSettings::new(RGB{r: 184 , g: 131, b: 120}));
 
-        area.insert(String::from("park"),
-                    AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
+
 
         area.insert(String::from("wood"),
                     AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
@@ -247,6 +258,49 @@ impl Default for MapStyleSettings{
 
         area.insert(String::from("cemetery"),
                     AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
+
+        //leisure
+        area.insert(String::from("park"),
+                    AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
+
+        area.insert(String::from("dog_park"),
+                    AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
+
+        area.insert(String::from("garden"),
+                    AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
+
+        area.insert(String::from("pitch"),
+                    AreaStyleSettings::new(RGB{r: 89 , g: 163, b: 137}));
+
+        area.insert(String::from("sports_center"),
+                    AreaStyleSettings::new(RGB{r: 89 , g: 163, b: 137}));
+
+        area.insert(String::from("stadium"),
+                    AreaStyleSettings::new(RGB{r: 121 , g: 155, b: 141}));
+
+        area.insert(String::from("swimming_pool"),
+                    AreaStyleSettings::new(RGB{r: 22 , g: 122, b: 129}));
+
+        area.insert(String::from("track"),
+                    AreaStyleSettings::new(RGB{r: 89 , g: 163, b: 137}));
+
+        //amentity
+        area.insert(String::from("grave_yard"),
+                    AreaStyleSettings::new(RGB{r: 92 , g: 119, b: 66}));
+
+        //landuse
+        area.insert(String::from("plant_nursery"),
+                    AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
+
+        area.insert(String::from("brownfield"),
+                    AreaStyleSettings::new(RGB{r: 127 , g: 104, b: 92}));
+
+        area.insert(String::from("allotments"),
+                    AreaStyleSettings::new(RGB{r: 120 , g: 159, b: 108}));
+
+        area.insert(String::from("basin"),
+                   AreaStyleSettings::new(RGB{r: 22 , g: 122, b: 129}));
+
 
         //oklch(0.6602 0.0244 44.33)
         area.insert(String::from("school"),

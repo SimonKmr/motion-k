@@ -146,6 +146,13 @@ impl Map {
         if _tag.category != category || !style_map.contains_key(&_tag.value) { return; }
 
         let style = &style_map[&_tag.value];
+
+        if style.render_threshold() != None{
+            if style.render_threshold().unwrap() > map_transform.scale {
+                return;
+            }
+        }
+
         let res = style
             .element(map_transform.pos.into_ba(),points)
             .draw_on(frame, canvas, draw_info);
@@ -159,6 +166,7 @@ impl Map {
 
 pub struct MapTransform {
     scale: f32,
+    scale_mapped: f32,
     pos_geo: Vector2D<f32>,
     pos: Vector2D<f32>,
 }
@@ -168,8 +176,8 @@ impl MapTransform {
         let position_x = node.x - self.pos_geo.x as f64;
         let position_y = node.y - self.pos_geo.y as f64;
 
-        let x = position_x * self.scale as f64;
-        let y = position_y * self.scale as f64;
+        let x = position_x * self.scale_mapped as f64;
+        let y = position_y * self.scale_mapped as f64;
         (x,y)
     }
 
