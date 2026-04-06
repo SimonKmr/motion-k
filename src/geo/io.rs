@@ -1,10 +1,12 @@
-use std::collections::{HashMap, LinkedList};
-use std::path::Path;
-use osmpbf::{Element, ElementReader};
 use crate::geo::map_generator::{MapData, Node, RelationData, RelationDrawOrder, Tag, WayData};
 use crate::geo::style::MapStyleSettings;
+use osmpbf::{Element, ElementReader};
+use std::collections::HashMap;
+use std::env::join_paths;
+use std::ops::Add;
+use std::path::Path;
 
-pub struct MapIO { }
+pub struct MapIO;
 impl MapIO {
     pub fn load(path: &String, settings: Option<MapStyleSettings>) -> MapData{
 
@@ -139,5 +141,24 @@ impl MapIO {
     fn export_binary(path: String, map_data: &MapData) {
         let bytes = bincode::serialize(map_data);
         std::fs::write(path, bytes.unwrap()).unwrap();
+    }
+}
+
+pub struct StyleIO;
+
+impl StyleIO {
+    pub fn read_toml(path: &String) -> MapStyleSettings{
+        let content = std::fs::read_to_string(path).unwrap();
+        let settings: MapStyleSettings = toml::from_str(&content).unwrap();
+        settings
+    }
+    pub fn write_toml(path: &String, style: &MapStyleSettings){
+        let mut path = path.clone();
+        let content = toml::to_string(style);
+        if !path.ends_with(".toml")
+        {
+            path.push_str(".toml");
+        }
+        std::fs::write(path, content.unwrap()).unwrap();
     }
 }
