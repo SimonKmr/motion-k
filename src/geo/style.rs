@@ -126,6 +126,15 @@ impl AreaStyleSettings{
         }
     }
 
+    /// new with threshold
+    pub fn new_wt(color: RGB, threshold: f32) -> AreaStyleSettings{
+        AreaStyleSettings{
+            is_enabled: true,
+            color,
+            render_threshold: Some(threshold),
+        }
+    }
+
     pub fn element(
         &self,
         position: Box<dyn Attribute<Vector2D<f32>> + 'static>,
@@ -201,7 +210,7 @@ impl Default for MapStyleSettings{
         //Water
         //oklch(0.5297 0.0851 202.43)
         way.insert(String::from("stream"),
-                   WayStyleSettings::new(1f32,RGB{r: 22 , g: 122, b: 129},None));
+                   WayStyleSettings::new(1f32,RGB{r: 22 , g: 122, b: 129},Some(7f32)));
 
 
         let mut area = HashMap::new();
@@ -324,13 +333,13 @@ impl Default for MapStyleSettings{
         let mut building = HashMap::new();
 
         building.insert(String::from("yes"),
-                              AreaStyleSettings::new(RGB{r:100, g:100, b:100}));
+                        AreaStyleSettings::new_wt(RGB{r:100, g:100, b:100}, 7f32));
 
         building.insert(String::from("house"),
-                        AreaStyleSettings::new(RGB{r:100, g:100, b:100}));
+                        AreaStyleSettings::new_wt(RGB{r:100, g:100, b:100}, 7f32));
 
         building.insert(String::from("garage"),
-                        AreaStyleSettings::new(RGB{r:100, g:100, b:100}));
+                        AreaStyleSettings::new_wt(RGB{r:100, g:100, b:100},7f32));
 
         MapStyleSettings{
             way,
