@@ -2,14 +2,15 @@ use crate::geo::style::{AreaStyleSettings, Category, MapStyleSettings, Style, Wa
 use crate::motion_graphics::attributes::attribute;
 use crate::motion_graphics::attributes::type_extensions::InterpolationArithmetics;
 use crate::motion_graphics::elements::element::DrawInfo;
-use crate::motion_graphics::elements::Element as MotionElement;
+use crate::motion_graphics::elements::{shape, Element as MotionElement};
 use serde::{Deserialize, Serialize};
-use skia_safe::Canvas;
+use skia_safe::{Canvas, Point, RGB};
 use std::collections::{HashMap, VecDeque};
 use std::time::Instant;
 use vector2d::Vector2D;
 use crate::geo::pos_builder::{AreaPositionBuilder, OrderedAreaPositionBuilder, PositionBuilder, WayPositionBuilder};
 pub(crate) use crate::geo::pos_builder::RelationDrawOrder;
+use crate::motion_graphics::elements::rectangle::Rectangle;
 
 pub struct Map{
     pub geo_position: Box<dyn attribute::Attribute<Vector2D<f32>>>,
@@ -66,7 +67,16 @@ impl MotionElement for Map{
         let scale_mapped = scale.exp();
         let geo_position = self.geo_position.get_frame(frame);
 
-        let map_transform = &MapTransform {scale: scale_mapped, pos_geo: geo_position, pos: position};
+        let map_transform = &MapTransform { scale, scale_mapped, pos_geo: geo_position, pos: position};
+
+        //r: 160 , g: 142, b: 134
+        //background
+        Rectangle{
+            position: Vector2D::new(0f32,0f32).into_bsa(),
+            size: Vector2D::new(draw_info.width, draw_info.height).into_bsa(),
+            color: RGB{r: 160,g: 142,b: 134}.into_bsa(),
+            is_antialias: false,
+        }.draw_on(frame, canvas, draw_info)?;
 
         for relation in &self.data.relations{
 
