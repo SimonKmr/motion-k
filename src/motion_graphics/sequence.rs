@@ -1,8 +1,8 @@
-use std::cell::{Cell, RefCell};
 use crate::motion_graphics::elements;
-use skia_safe::{surfaces, Color, ISize};
-use vector2d::Vector2D;
 use crate::motion_graphics::elements::element::DrawInfo;
+use skia_safe::{surfaces, Color, ISize};
+use std::cell::RefCell;
+use vector2d::Vector2D;
 
 pub struct Sequence{
     start_frame: usize,
