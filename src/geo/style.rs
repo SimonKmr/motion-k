@@ -9,29 +9,39 @@ use std::collections::HashMap;
 use vector2d::Vector2D;
 use crate::motion_graphics::elements::Element;
 
+
 pub trait Style {
     fn element(
         &self,
         position: Box<dyn Attribute<Vector2D<f32>> + 'static>,
-        points: Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>> ) -> Box<dyn Element> ;
+        points: Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>>,
+        scale: f32
+    ) -> Box<dyn Element> ;
 
     fn render_threshold(&self) -> Option<f32>;
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct MapStyleSettings{
+    pub dyn_ways: HashMap<String,ScaleSensitiveWayStyleSettings>,
     pub way: HashMap<String,WayStyleSettings>,
     pub area: HashMap<String,AreaStyleSettings>,
     pub building: HashMap<String,AreaStyleSettings>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct WayStyleSettings{
     pub is_enabled: bool,
     pub(crate) width: f32,
     pub(crate) color: RGB,
     ///defines a scale when the value will be displayed when rendering the map
     pub(crate) render_threshold: Option<f32>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ScaleSensitiveWayStyleSettings{
+    pub styles : Vec<(f32, Box<WayStyleSettings>)>,
+    pub(crate) render_threshold: Option<f32>
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone,PartialEq)]
@@ -41,7 +51,7 @@ pub struct RGB {
     pub b: u8,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct AreaStyleSettings{
     pub is_enabled: bool,
     pub(crate) color: RGB,
@@ -77,14 +87,14 @@ impl WayStyleSettings{
             render_threshold,
         }
     }
-
-
 }
 
 impl Style for WayStyleSettings{
     fn element(
         &self, position: Box<dyn Attribute<Vector2D<f32>>>,
-        points: Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>> ) -> Box<dyn Element> {
+        points: Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>>,
+        scale: f32
+    ) -> Box<dyn Element> {
         Box::new(Line {
             position_offset: position,
             start: 0f32.into_bsa(),
@@ -102,8 +112,30 @@ impl Style for WayStyleSettings{
     }
 }
 
+impl Style for ScaleSensitiveWayStyleSettings{
+    fn element(&self, position: Box<dyn Attribute<Vector2D<f32>> + 'static>, points: Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>>, scale: f32) -> Box<dyn Element> {
+        let n = self.styles.len();
+
+        let style = &self.styles[0].1;
+        let mut element: Box<dyn Element> = style.element(position.clone(), points.clone(),0f32);
+
+        for i in 0..n {
+            let threshold_key = self.styles[i].0;
+            if threshold_key > scale { break; }
+            let style = &self.styles[i].1;
+            element = style.element(position.clone(), points.clone(),0f32);
+        }
+
+        element
+    }
+
+    fn render_threshold(&self) -> Option<f32> {
+        self.render_threshold.clone()
+    }
+}
+
 impl Style for AreaStyleSettings{
-    fn element(&self, position: Box<dyn Attribute<Vector2D<f32>> + 'static>, points: Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>>) -> Box<dyn Element> {
+    fn element(&self, position: Box<dyn Attribute<Vector2D<f32>> + 'static>, points: Vec<Box<dyn Attribute<Vector2D<f32>> + 'static>>, scale: f32) -> Box<dyn Element> {
         Box::new(Shape {
             position_offset: position,
             color: self.color.into_skia_rgb().into_bsa(),
@@ -150,21 +182,39 @@ impl AreaStyleSettings{
 
 impl Default for MapStyleSettings{
     fn default()->Self{
-        let mut way = HashMap::new();
 
         let road_color = RGB{ r: 180, g: 180, b: 180};
 
-        way.insert(String::from("motorway"),
-                   WayStyleSettings::new(6f32,road_color,Some(6f32)));
+        let mut motorway_styles : Vec<(f32,Box<WayStyleSettings>)> = Vec::new();
+        motorway_styles.push((5f32,Box::new(WayStyleSettings::new(1f32,road_color,None))));
+        motorway_styles.push((6f32,Box::new(WayStyleSettings::new(2f32,road_color,None))));
+        motorway_styles.push((7f32,Box::new(WayStyleSettings::new(4f32,road_color,None))));
+        motorway_styles.push((8f32,Box::new(WayStyleSettings::new(6f32,road_color,None))));
 
-        way.insert(String::from("trunk"),
-                   WayStyleSettings::new(5f32,road_color,Some(6f32)));
+        let mut dyn_ways = HashMap::new();
+        dyn_ways.insert(String::from("motorway"),ScaleSensitiveWayStyleSettings{
+            styles : motorway_styles.clone(),
+            render_threshold: Some(5f32)
+        });
+        
+        dyn_ways.insert(String::from("trunk"),ScaleSensitiveWayStyleSettings{
+            styles : motorway_styles.clone(),
+            render_threshold: Some(5f32)
+        });
+        
+        dyn_ways.insert(String::from("primary"),ScaleSensitiveWayStyleSettings{
+            styles : motorway_styles.clone(),
+            render_threshold: Some(5f32)
+        });
 
-        way.insert(String::from("primary"),
-                   WayStyleSettings::new(5f32,road_color,Some(6f32)));
+        dyn_ways.insert(String::from("secondary"),ScaleSensitiveWayStyleSettings{
+            styles : motorway_styles.clone(),
+            render_threshold: Some(5f32)
+        });
 
-        way.insert(String::from("secondary"),
-                   WayStyleSettings::new(4f32,road_color,Some(6f32)));
+        let mut way = HashMap::new();
+
+
 
         way.insert(String::from("tertiary"),
                    WayStyleSettings::new(3f32,road_color,Some(7f32)));
@@ -342,6 +392,7 @@ impl Default for MapStyleSettings{
                         AreaStyleSettings::new_wt(RGB{r:100, g:100, b:100},7f32));
 
         MapStyleSettings{
+            dyn_ways,
             way,
             area,
             building,

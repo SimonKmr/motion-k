@@ -47,8 +47,8 @@ fn main() {
     );
 
     let mut map_scale = InterpolatedAttribute::new();
-    map_scale.add(6.5f32,0_usize);
-    map_scale.add(6.5f32,300_usize);
+    map_scale.add(5f32,0_usize);
+    map_scale.add(9f32,30_usize);
 
     let mut geo_pos = InterpolatedAttribute::new();
     geo_pos.add(Vector2D::new(51.57190f32, 8.10225f32),0);

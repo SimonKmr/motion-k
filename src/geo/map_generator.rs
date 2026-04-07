@@ -129,6 +129,15 @@ impl MotionElement for Map{
             Map::draw(frame, canvas, draw_info, map_transform, Category::Path, &self.settings.way, pos_builder, &way.tag );
         }
 
+        for way in &self.data.ways {
+            let pos_builder = WayPositionBuilder{
+                way_points: &way.way_points,
+                transform: map_transform,
+                draw_info: &draw_info,
+            };
+            Map::draw(frame, canvas, draw_info, map_transform, Category::Path, &self.settings.dyn_ways, pos_builder, &way.tag );
+        }
+
         let elapsed = time.elapsed();
         println!("Time elapsed is: {}", elapsed.as_millis());
         Ok(())
@@ -145,8 +154,8 @@ impl Map {
         let _tag = _tag.clone().unwrap();
         if _tag.category != category || !style_map.contains_key(&_tag.value) { return; }
 
+        let scale = map_transform.scale;
         let style = &style_map[&_tag.value];
-
         if style.render_threshold() != None{
             if style.render_threshold().unwrap() > map_transform.scale {
                 return;
@@ -154,7 +163,7 @@ impl Map {
         }
 
         let res = style
-            .element(map_transform.pos.into_ba(),points)
+            .element(map_transform.pos.into_ba(),points, map_transform.scale)
             .draw_on(frame, canvas, draw_info);
 
         match res {
